@@ -156,7 +156,6 @@ public:
 	zz_manager_visible * visibles;
 	zz_manager * lights;
 	zz_manager * shaders;
-	zz_manager * channels;
 	zz_manager * motions;
 	zz_manager * skeletons;
 	zz_manager_texture * textures;
@@ -166,11 +165,10 @@ public:
 	zz_manager_font * fonts;
 	zz_manager * cursors;
 
-    zz_screen_sfx screen_sfx; 
-    zz_camera_sfx camera_sfx;
-    zz_sprite_sfx sprite_sfx;
+	zz_camera_sfx camera_sfx;
+	zz_sprite_sfx sprite_sfx;
 	zz_avatar_selection_sfx avatar_selection_sfx;
-    zz_moving_camera_screen_sfx moving_camera_sfx;
+	zz_moving_camera_screen_sfx moving_camera_sfx;
 
 
 #ifdef ZZ_USE_SOUND
@@ -178,7 +176,7 @@ public:
 #endif
 
 	zz_manager_sfx * sfxs; // post-render special effects
-    bool sfx_onoff;                            // cho
+	bool sfx_onoff;                            // cho
 	
 	zz_scene_octree scene;
 	

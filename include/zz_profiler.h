@@ -86,6 +86,8 @@
 #include "zz_hash_table.h"
 #endif
 
+#define __ZZ_PROFILER_DISABLE__
+
 struct zz_profiler_item {
 	int count; // number of occurence
 	char name[ZZ_MAX_STRING]; // function name

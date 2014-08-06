@@ -655,6 +655,16 @@ bool zz_material_colormap::set (int pass)
 		}
 		_set_target_glow();
 		return true;
+	case ZZ_RW_SSAO:
+
+		s_renderer->enable_zbuffer(true);
+		s_renderer->set_zfunc(ZZ_CMP_LESSEQUAL);
+		s_renderer->enable_zwrite(false);
+		s_renderer->enable_alpha_blend(false, 0);
+		s_renderer->set_cullmode( zz_render_state::ZZ_CULLMODE_CW );
+
+		return true;
+
 	}
 
 	s_state.copy_from(state);

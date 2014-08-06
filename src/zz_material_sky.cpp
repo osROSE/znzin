@@ -79,6 +79,12 @@ bool zz_material_sky::set (int pass)
 		secondmap->set(1);
 	}
 
+	if( s_renderstate->use_pixel_shader ) {
+		//ZZ_VSC_LIGHT_DIRECTION
+		float trans[4] = { 1.0f, 1.0f, 1.0f, blend_ratio_ };
+		s_renderer->set_pixel_shader_constant( 14, trans, 1 );
+	}
+
 	// do sky texture stage setup
 	s_state.copy_from(state);
 

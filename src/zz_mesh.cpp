@@ -16,9 +16,11 @@
 #include "zz_vfs.h"
 #include "zz_renderer.h"
 #include "zz_mesh.h"
-#include "nvtristrip.h"
 
-#pragma comment (lib, "nvtristrip.lib")
+#ifdef __NV_TRI_STRIP
+#	include "nvtristrip.h"
+#	pragma comment (lib, "nvtristrip.lib")
+#endif
 
 ZZ_IMPLEMENT_DYNCREATE(zz_mesh, zz_node)
 
@@ -431,6 +433,10 @@ void zz_mesh::update_index_buffer ()
 // use this at off-line(tool interface)
 bool zz_mesh::generate_strip ()
 {
+#ifndef __NV_TRI_STRIP
+	ZZ_LOG("mesh:generate_strip() failed. library not built with nvtristrip\n");
+	return false;
+#else
 	if (num_indices != num_faces*3) { // already striped?
 		ZZ_LOG("mesh:generate_strip() failed. already striped\n");
 		return false;
@@ -478,6 +484,7 @@ bool zz_mesh::generate_strip ()
 	delete [] prim_group;
 
 	return ret;
+#endif
 }
 
 void zz_mesh::dump_indices ()

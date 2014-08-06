@@ -101,7 +101,7 @@ bool zz_terrain_block::begin_state_zonly ()
 
 	zz_shader * shader = zz_shader::terrain_shader;
 
-	assert(r->get_render_where() == ZZ_RW_SCENE);
+	//assert(r->get_render_where() == ZZ_RW_SCENE);
 
 	zz_handle vshader_index = shader->get_vshader(SHADER_FORMAT_FOG, ZZ_RW_SCENE);
 	zz_handle pshader_index = shader->get_pshader(SHADER_FORMAT_FOG, ZZ_RW_SCENE);

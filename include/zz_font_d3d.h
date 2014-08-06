@@ -44,6 +44,7 @@ protected:
 	virtual void draw_text_prim (const zz_font_text& text_item);
 	virtual void draw_text_prim_offset (const zz_font_text& text_item, float offsetx, float offsety);
 	virtual void draw_text_prim_outline_simple (const zz_font_text& text_item);
+	virtual void draw_text_prim_shadow_simple (const zz_font_text& text_item);
 
 	virtual zz_font_texture * get_font_texture ()
 	{

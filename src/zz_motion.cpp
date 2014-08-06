@@ -24,6 +24,7 @@
 #include "zz_mesh.h"
 #include "zz_autolock.h"
 #include "zz_vfs_pkg.h"
+#include "zz_fast_reader.h"
 
 using namespace std;
 
@@ -48,13 +49,9 @@ bool zz_motion::unload ()
 	if (!channels) // already empty
 		return true;
 
-	assert(znzin);
-	assert(znzin->channels);
-
 	for (unsigned int i = 0; i < num_channels; ++i) {
-		znzin->channels->kill(channels[i]);
+		ZZ_SAFE_DELETE(channels[i]);
 	}
-
 	ZZ_SAFE_DELETE_ARRAY(channels);
 
 	return true;
@@ -66,6 +63,7 @@ bool zz_motion::load (const char * file_name, float scale_in_load)
 	//ZZ_LOG("motion: load(%s)\n", file_name);
 
 	zz_vfs_pkg motion_file;
+	zz_fast_reader motion_rdr;
 	char magic_number[8];
 	uint32 frame_index, channel_index;
 	uint32 frame_number;
@@ -83,11 +81,11 @@ bool zz_motion::load (const char * file_name, float scale_in_load)
 	// header section
 	motion_file.read_string(magic_number);
 	
-	// verify magic_number
+    // verify magic_number
 	if (strncmp(magic_number, "ZMO0002", 7)) {
 		ZZ_LOG("motion: motion file version mismatched\n");
-		return false; // wrong version or file structure
-	}
+        return false; // wrong version or file structure
+    }
 
 	// read the speed of frames
 	motion_file.read_uint32(fps); // frame per second
@@ -102,87 +100,52 @@ bool zz_motion::load (const char * file_name, float scale_in_load)
 	
 	channels = zz_new zz_channel * [num_channels];
 
-#ifdef _TESTCODE
-	ZZ_LOG("motion: load(%s), filename%s), num_frames(%d), num_channels(%d)\n", this->get_name(),
-		file_name, num_frames, num_channels);
-#endif
-
 	zz_channel * new_channel = NULL;
 	uint32 channel_type;
 
+	motion_rdr.load( motion_file, num_channels * 8 );
+
 	// read channel info
 	for (channel_index = 0; channel_index < num_channels; ++channel_index) {
-		motion_file.read_uint32(channel_type);
-		motion_file.read_uint32(refer_id);
+		motion_rdr.read_uint32(channel_type);
+		motion_rdr.read_uint32(refer_id);
 
 		// create new "noname" channel
-		if (channel_type == ZZ_CTYPE_POSITION) {
-			new_channel = static_cast<zz_channel *>
-				(znzin->channels->spawn(NULL, ZZ_RUNTIME_TYPE(zz_channel_position)));
-			//ZZ_LOG("motion: load() channel_index(%d) = position\n", channel_index);
+		switch( channel_type ) {
+			case ZZ_CTYPE_ALPHA:
+			case ZZ_CTYPE_TEXTUREANIM:
+			case ZZ_CTYPE_SCALE:
+				new_channel = zz_new zz_channel_x;
+				break;
+			case ZZ_CTYPE_UV0:
+			case ZZ_CTYPE_UV1:
+			case ZZ_CTYPE_UV2:
+			case ZZ_CTYPE_UV3:
+				new_channel = zz_new zz_channel_xy;
+				break;
+			case ZZ_CTYPE_POSITION: 
+			case ZZ_CTYPE_NORMAL:
+				new_channel = zz_new zz_channel_position;
+				break;
+			case ZZ_CTYPE_ROTATION:
+				new_channel = zz_new zz_channel_rotation;
+				break;
+			default:
+				ZZ_LOG("motion: load() failed. invalid channel type\n");
+				return false; // no_channel_type error
 		}
-		else if (channel_type == ZZ_CTYPE_ROTATION) {
-			new_channel = static_cast<zz_channel *>
-				(znzin->channels->spawn(NULL, ZZ_RUNTIME_TYPE(zz_channel_rotation)));
-			//ZZ_LOG("motion: load() channel_index(%d) = rotation\n", channel_index);
-		}
-		else if (channel_type == ZZ_CTYPE_NORMAL) {
-			new_channel = static_cast<zz_channel *>
-				(znzin->channels->spawn(NULL, ZZ_RUNTIME_TYPE(zz_channel_position)));
-			//ZZ_LOG("motion: load() channel_index(%d) = normal\n", channel_index);
-		}
-		else if (channel_type == ZZ_CTYPE_ALPHA) {
-			new_channel = static_cast<zz_channel *>
-				(znzin->channels->spawn(NULL, ZZ_RUNTIME_TYPE(zz_channel_x)));
-			//ZZ_LOG("motion: load() channel_index(%d) = alpha\n", channel_index);
-		}
-		else if (channel_type == ZZ_CTYPE_UV0) {
-			new_channel = static_cast<zz_channel *>
-				(znzin->channels->spawn(NULL, ZZ_RUNTIME_TYPE(zz_channel_xy)));
-			//ZZ_LOG("motion: load() channel_index(%d) = uv0\n", channel_index);
-		}
-		else if (channel_type == ZZ_CTYPE_UV1) {
-			new_channel = static_cast<zz_channel *>
-				(znzin->channels->spawn(NULL, ZZ_RUNTIME_TYPE(zz_channel_xy)));
-			//ZZ_LOG("motion: load() channel_index(%d) = uv1\n", channel_index);
-		}
-		else if (channel_type == ZZ_CTYPE_UV2) {
-			new_channel = static_cast<zz_channel *>
-				(znzin->channels->spawn(NULL, ZZ_RUNTIME_TYPE(zz_channel_xy)));
-			//ZZ_LOG("motion: load() channel_index(%d) = uv2\n", channel_index);
-		}
-		else if (channel_type == ZZ_CTYPE_UV3) {
-			new_channel = static_cast<zz_channel *>
-				(znzin->channels->spawn(NULL, ZZ_RUNTIME_TYPE(zz_channel_xy)));
-			//ZZ_LOG("motion: load() channel_index(%d) = uv3\n", channel_index);
-		}
-		else if (channel_type == ZZ_CTYPE_TEXTUREANIM) {
-			new_channel = static_cast<zz_channel *>
-				(znzin->channels->spawn(NULL, ZZ_RUNTIME_TYPE(zz_channel_x)));
-			//ZZ_LOG("motion: load() channel_index(%d) = textureanim\n", channel_index);
-		}
-		else if (channel_type == ZZ_CTYPE_SCALE) {
-			new_channel = static_cast<zz_channel *>
-				(znzin->channels->spawn(NULL, ZZ_RUNTIME_TYPE(zz_channel_x)));
-			//ZZ_LOG("motion: load() channel_index(%d) = scale\n", channel_index);
-		}
-		else {
-			ZZ_LOG("motion: load() failed. invalid channel type\n");
-			return false; // no_channel_type error
-		}
+
 		new_channel->set_channel_type(channel_type);
 		new_channel->set_refer_id(refer_id);
 		new_channel->assign(num_frames);
 
-		// add handle into this motion
+        // add handle into this motion
 		if (new_channel) {
 			channels[channel_index] = new_channel;
 		}
 		new_channel = NULL;
 	}
 	
-	//ZZ_LOG("motion: channel_info done\n");
-
 	float x_data;
 	vec2 xy_data;
 	vec3 position_data;
@@ -193,32 +156,38 @@ bool zz_motion::load (const char * file_name, float scale_in_load)
 	mat4 newTM = mat4_id;
 	mat4 relativeTM = mat4_id;
 
+	int format_size = 0;
+	for( channel_index = 0; channel_index < num_channels; ++channel_index ) {
+		switch( channels[channel_index]->get_channel_format() ) {
+			case ZZ_CFMT_X: format_size += 4; break;
+			case ZZ_CFMT_XY: format_size += 8; break;
+			case ZZ_CFMT_XYZ: format_size += 12; break;
+			case ZZ_CFMT_WXYZ: format_size += 16; break;
+		}
+	}
+
+	motion_rdr.load( motion_file, format_size * num_frames );
+
 	// read every frame info
 	for (frame_index = 0; frame_index < uint32(num_frames); ++frame_index) {
 		frame_number = frame_index; // currently, do not specify frame number
 		// read every channel info
 		
 		for (channel_index = 0; channel_index < num_channels; ++channel_index) {
-			if (channels[channel_index]->is_a(ZZ_RUNTIME_TYPE(zz_channel_x))) {
-				motion_file.read_float(x_data);
+			if (channels[channel_index]->get_channel_format() == ZZ_CFMT_X) {
+				motion_rdr.read_float(x_data);
 				channels[channel_index]->set_by_frame(frame_number, (void *)&x_data);
-				//ZZ_LOG("motion: load(%s), frame(%d), channel(%d), x_data(%f)\n",
-				//	file_name,
-				//	frame_index,
-				//	channel_index,
-				//	x_data);
 			}
-			else if (channels[channel_index]->is_a(ZZ_RUNTIME_TYPE(zz_channel_xy))) {
-				motion_file.read_float2(xy_data.vec_array);
+			else if (channels[channel_index]->get_channel_format() == ZZ_CFMT_XY) {
+				motion_rdr.read_float(xy_data.x);
+				motion_rdr.read_float(xy_data.y);
 				channels[channel_index]->set_by_frame(frame_number, (void *)&xy_data);
-				//ZZ_LOG("motion: load(%s), frame(%d), channel(%d), x_data(%f:%f)\n",
-				//		file_name,
-				//		frame_index,
-				//		channel_index,
-				//		xy_data.x, xy_data.y);
 			}
-			else if (channels[channel_index]->is_a(ZZ_RUNTIME_TYPE(zz_channel_position))) {
-				motion_file.read_float3(position_data.vec_array);
+			else if (channels[channel_index]->get_channel_format() == ZZ_CFMT_XYZ) {
+				motion_rdr.read_float(position_data.x);
+				motion_rdr.read_float(position_data.y);
+				motion_rdr.read_float(position_data.z);
+
 				position_data.x *= scale_in_load;
 				position_data.y *= scale_in_load;
 				position_data.z *= scale_in_load;
@@ -229,11 +198,12 @@ bool zz_motion::load (const char * file_name, float scale_in_load)
 
 				channels[channel_index]->set_by_frame(frame_number, (void *)&position_data);
 			}
-			else if (channels[channel_index]->is_a(ZZ_RUNTIME_TYPE(zz_channel_rotation))) {
-				motion_file.read_float(rotation_data.w);
-				motion_file.read_float(rotation_data.x);
-				motion_file.read_float(rotation_data.y);
-				motion_file.read_float(rotation_data.z);
+			else if (channels[channel_index]->get_channel_format() == ZZ_CFMT_WXYZ) {
+				motion_rdr.read_float(rotation_data.w);
+				motion_rdr.read_float(rotation_data.x);
+				motion_rdr.read_float(rotation_data.y);
+				motion_rdr.read_float(rotation_data.z);
+
 				channels[channel_index]->set_by_frame(frame_number, (void *)&rotation_data);
 			}
 			else {
@@ -254,13 +224,14 @@ bool zz_motion::load (const char * file_name, float scale_in_load)
 		// set initial direction
 		direction_vector = vec3(0, -1, 0); // negative-y axis is front direction
 	}
+
 	return true;
 }
 
-void zz_motion::set_channel_interp_style (zz_node_type * channel_type, zz_interp_style style)
+void zz_motion::set_channel_interp_style (zz_channel_format channel_format, zz_interp_style style)
 {
 	for (unsigned int i = 0; i < num_channels; ++i) {
-		if (channels[i]->is_a(channel_type)) {
+		if (channels[i]->get_channel_format() == channel_format) {
 			channels[i]->set_interp_style(style);
 		}
 	}

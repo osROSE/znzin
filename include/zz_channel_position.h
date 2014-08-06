@@ -42,8 +42,6 @@ public:
 	
 	// set methods
 	virtual void set_by_frame (int frame, void * data_pointer);
-
-	ZZ_DECLARE_DYNAMIC(zz_channel_position)
 };
 
 #endif // __ZZ_CHANNEL_POSITION_H__

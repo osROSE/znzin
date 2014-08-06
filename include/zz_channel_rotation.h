@@ -41,9 +41,7 @@ public:
 	virtual void get_by_time (zz_time time, int fps, void * data_pointer);
 	
 	// set methods
-	virtual void set_by_frame (int frame, void * data_poniter);
-
-	ZZ_DECLARE_DYNAMIC(zz_channel_rotation)
+	virtual void set_by_frame (int frame, void * data_pointer);
 };
 
 #endif // __ZZ_CHANNEL_ROTATION_H__

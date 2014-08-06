@@ -84,6 +84,7 @@ struct zz_render_state
 	bool use_zonly_terrain; // whether render z-only blended terrain or not.
 	bool use_draw_text_rect; // whether draw text rect for debugging
 	bool use_font_texture; // whether use font_texture or not. default is true
+	bool use_ssao;
 
 	int fullscene_glow_type; // 0 : (one-one), 1 : destcorol-one
 

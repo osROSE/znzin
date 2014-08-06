@@ -15,6 +15,14 @@
 #include "zz_node.h"
 #endif
 
+enum  zz_channel_format {
+	ZZ_CFMT_NONE,
+	ZZ_CFMT_X,
+	ZZ_CFMT_XY,
+	ZZ_CFMT_XYZ,
+	ZZ_CFMT_WXYZ
+};
+
 enum  zz_interp_style {
 	ZZ_INTERP_NONE = 0,
 	ZZ_INTERP_LINEAR = 1,
@@ -46,7 +54,7 @@ channel : is compound of a list of rotation, position, tcb....
 		  channel pool is managed by channel manager (channels)
 */
 //--------------------------------------------------------------------------------
-class zz_channel : public zz_node {
+class zz_channel {
 	friend zz_motion;
 
 protected:
@@ -76,6 +84,24 @@ public:
 
 	void set_channel_type (uint32 type);
 
+	zz_channel_format get_channel_format ()
+	{
+		switch( channel_type ) {
+			case ZZ_CTYPE_NONE: return ZZ_CFMT_NONE;
+			case ZZ_CTYPE_POSITION: return ZZ_CFMT_XYZ;
+			case ZZ_CTYPE_ROTATION: return ZZ_CFMT_WXYZ;
+			case ZZ_CTYPE_NORMAL: return ZZ_CFMT_XYZ;
+			case ZZ_CTYPE_ALPHA: return ZZ_CFMT_X;
+			case ZZ_CTYPE_UV0: return ZZ_CFMT_XY;
+			case ZZ_CTYPE_UV1: return ZZ_CFMT_XY;
+			case ZZ_CTYPE_UV2: return ZZ_CFMT_XY;
+			case ZZ_CTYPE_UV3: return ZZ_CFMT_XY;
+			case ZZ_CTYPE_TEXTUREANIM: return ZZ_CFMT_X;
+			case ZZ_CTYPE_SCALE: return ZZ_CFMT_X;
+			default: return ZZ_CFMT_NONE;
+		}
+	}
+
 	// array related
 	virtual void assign (int size) = 0;
 	virtual void clear (void) = 0;
@@ -86,7 +112,7 @@ public:
 	virtual void get_by_time (zz_time time, int fps, void * data_pointer) = 0;
 	
 	// set methods
-	virtual void set_by_frame (int frame, void * data_poniter) = 0;
+	virtual void set_by_frame (int frame, void * data_pointer) = 0;
 	
 	void set_interp_style (zz_interp_style interp_style);
 	zz_interp_style get_interp_style (void);
@@ -100,8 +126,6 @@ public:
 	{
 		return ZZ_FRAME_TO_TICK(frame, fps);
 	}
-
-	ZZ_DECLARE_DYNAMIC(zz_channel)
 };
 
 /*

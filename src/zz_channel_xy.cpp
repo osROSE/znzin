@@ -53,8 +53,6 @@
 #include "zz_channel.h"
 #include "zz_channel_xy.h"
 
-ZZ_IMPLEMENT_DYNCREATE(zz_channel_xy, zz_channel)
-
 zz_channel_xy::zz_channel_xy(void) : zz_channel(ZZ_INTERP_LINEAR), xys(0), num_xys(0)
 {
 }

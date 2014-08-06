@@ -213,7 +213,7 @@ void zz_bone::apply_channel_by_time (zz_time time, zz_motion * motion, int custu
 		{			
 			if(forced_rotation_calculate_onoff)
 			{			
-				float diff_time = znzin->get_diff_time();
+				float diff_time = (float)znzin->get_diff_time();
 				const float angle_per_time = 0.3f*3.141592f / ZZ_TICK_PER_SEC;  
 				float new_angle_diff = angle_per_time * diff_time;	 
 	            

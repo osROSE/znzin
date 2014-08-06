@@ -272,9 +272,11 @@ void zz_trail::push_points (int num_to_add)
 		// clear last frame's points in range[0, 1]
 		// : pop last frame's temporary positions.
 		for (i = 0; i < last_temp_points; i++) {
-			sp.pop_front();
-			ep.pop_front();
-			point_time.pop_front();
+			if( sp.size( ) > 0 ) {
+				sp.pop_front();
+				ep.pop_front();
+				point_time.pop_front();
+			}
 		}
 
 		// recalc num_to_add for range[1, 2]
@@ -377,7 +379,7 @@ void zz_trail::update_animation (bool recursive, zz_time diff_time)
 	assert(sp.size() == ep.size());
 
 	// + initialize if first
-	if (sp.size() == 0 && (control_state != zz_control_state::ZZ_CS_PAUSE)) {
+	if (sp.size() == 0 && (control_state != ZZ_CS_PAUSE)) {
 		// if it is pause-mode and has no points, then do not insert starting points.
 		// no points to interpolate
 		sp.push_back(new_world_sp);
@@ -396,7 +398,7 @@ void zz_trail::update_animation (bool recursive, zz_time diff_time)
 	trail_length_excess = trail_length - (int)(num_to_add*distance_per_point);
 
 	// + push points
-	if (control_state == zz_control_state::ZZ_CS_START) {
+	if (control_state == ZZ_CS_START) {
 		if (num_to_add > 0) { // if it's time to update
 			// shift points(update last point) and push points
 			shift_points(new_world_sp, new_world_ep);
@@ -405,7 +407,7 @@ void zz_trail::update_animation (bool recursive, zz_time diff_time)
 	}
 
 	// + pop points
-	if (control_state != zz_control_state::ZZ_CS_PAUSE) {
+	if (control_state != ZZ_CS_PAUSE) {
 		pop_points();
 	}
 }

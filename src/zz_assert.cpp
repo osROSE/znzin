@@ -25,48 +25,15 @@ const char * zz_assert_shared_struct::s_current_file = 0;
 
 #ifdef _WIN32
 #include <windows.h>
-#include "resource.h"
 
 extern HINSTANCE g_hinstDLL;
 extern HWND g_hWnd;
 
 const char * popup_dlg_msg = 0;
 
-BOOL CALLBACK PopupDlgProc (HWND hDlg, UINT iMessage, WPARAM wParam, LPARAM lParam)
-{
-	switch (iMessage)
-	{
-		case WM_INITDIALOG:
-			{
-				SetDlgItemText( hDlg, IDC_EDIT_ASSERT, popup_dlg_msg );
-			}
-			return TRUE;
-		case WM_COMMAND:
-			switch (wParam)
-			{
-			case IDIGNORE:
-				EndDialog(hDlg, 1);
-				return TRUE;
-			case IDCANCEL:
-				EndDialog(hDlg, 0);
-				return TRUE;
-			}
-			break;
-	}
-	return FALSE;
-}
-
 int zz_popup_message (const char * msg)
 {
-	//MessageBox( NULL, msg, "engine zz_assert failed", MB_OK | MB_TOPMOST );
-	popup_dlg_msg = msg;
-
-	if (0 == g_hinstDLL) {
-		MessageBox( NULL, msg, "no window instance", MB_OK | MB_TOPMOST );
-		return 0;
-	}
-
-	return DialogBox(g_hinstDLL, MAKEINTRESOURCE(IDD_DIALOG_ASSERT), g_hWnd, PopupDlgProc);
+	return MessageBox( NULL, msg, "engine zz_assert failed", MB_OK | MB_TOPMOST );
 }
 
 #endif // _WIN32

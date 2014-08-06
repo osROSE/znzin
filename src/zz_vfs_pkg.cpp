@@ -205,7 +205,7 @@
 
 #define MAX_FILESIZE 100000000
 
-#pragma comment (lib, "TriggerVFS.lib")
+//#pragma comment (lib, "TriggerVFS.lib")
 
 //--------------------------------------------------------------------------------
 // zz_vfs_pkg_system:

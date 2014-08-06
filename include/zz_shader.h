@@ -142,6 +142,9 @@ public:
 	static zz_shader * glow_shader;
 	static zz_shader * glow_shader_skin;
 	static zz_shader * terrain_shader;
+	static zz_shader * ssao_shader;
+	static zz_shader * ssao_shader_skin;
+	static zz_shader * post_process_shader;
 
 	zz_shader(void);
 	virtual ~zz_shader(void);
@@ -155,11 +158,7 @@ public:
 	}
 
 	zz_handle get_vshader (int format_in = SHADER_FORMAT_DEFAULT, ZZ_RENDERWHERE render_where = ZZ_RW_SCENE) const;
-	zz_handle get_pshader (int format_in = SHADER_FORMAT_DEFAULT, ZZ_RENDERWHERE render_where = ZZ_RW_SCENE) const
-	{
-		assert(format_in < num_format);
-		return pshader_handles[format_in];
-	}
+	zz_handle get_pshader (int format_in = SHADER_FORMAT_DEFAULT, ZZ_RENDERWHERE render_where = ZZ_RW_SCENE) const;
 
 	// set current format
 	void set_num_format (int num_format_in)

@@ -251,12 +251,9 @@ public:
 
 	// Get the highest root node, if not, returns null.
 	// same as get_manger except return type
-	zz_node * get_root () const
+	inline zz_node * get_root () const
 	{
-		if (is_valid(node_system)) {
-			return node_system->root;
-		}
-		return NULL;
+		return is_valid(node_system) ? node_system->root : nullptr;
 	}
 
 	// Get the parent node, if not, returns null.

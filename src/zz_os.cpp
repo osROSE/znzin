@@ -93,12 +93,15 @@ void zz_os::initialize ()
 
 	char * counter_string = NULL;
 
+	// rdtsc is unreliable on multi-core processors, rdtsc is not sync'd accross
+	//   the cores, and thus, when the application switches cores it can easily
+	//   receive times not linearly related to the time that it got from other cores
 	if (false){ //init_rdtsc()) { // try rdtsc and initialize
 		g_counter_type = TIMER_RDTSC;
 		g_get_ticks_ptr = zz_os::get_ticks_rdtsc;
 		counter_string = "rdtsc";
 	}
-	else if (false/*init_qpc()*/) { // try qpc and initialize
+	else if (init_qpc()) { // try qpc and initialize
 		g_counter_type = TIMER_QPC;
 		g_get_ticks_ptr = zz_os::get_ticks_qpc;
 		counter_string = "qpc";

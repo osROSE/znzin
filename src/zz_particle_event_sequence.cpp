@@ -407,9 +407,10 @@ void zz_particle_event_sequence::CreateNewParticle( vec3 m_vPartSysPos )
 	}
 
 	// process any initial events
-	for (std::vector<zz_particle_event *>::iterator i = m_Events.begin(); i != m_Events.end() && !(*i)->GetActualTime(); i++) 
+	int i = 0;
+	for( ; i != m_Events.size() && !m_Events[i]->GetActualTime(); i++) 
 	{
-		(*i)->DoItToIt(*part);
+		m_Events[i]->DoItToIt(*part);
 	}
 	part->m_CurEvent = i;
 	m_iTotalParticleLives++;
@@ -418,18 +419,17 @@ void zz_particle_event_sequence::CreateNewParticle( vec3 m_vPartSysPos )
 void zz_particle_event_sequence::RunEvents( zz_particle &part )
 {
 	// apply any other events to this particle
-	for (std::vector<zz_particle_event *>::iterator i = part.m_CurEvent; 
-		i != m_Events.end() && (*i)->GetActualTime() <= part.m_fEventTimer; i++) 
+	int i = part.m_CurEvent;
+	for( ; i != m_Events.size() && m_Events[i]->GetActualTime() <= part.m_fEventTimer; i++) 
 	{
 		float oldeventtimer = part.m_fEventTimer;
-		(*i)->DoItToIt(part);
+		m_Events[i]->DoItToIt(part);
 
 		if (part.m_fEventTimer != oldeventtimer) 
 		{
 			// event timer has changed, we need to recalc m_CurEvent.
-			for (std::vector<zz_particle_event *>::iterator RecalcIter = m_Events.begin(); 
-				RecalcIter != m_Events.end() && (*RecalcIter)->GetActualTime() < part.m_fEventTimer; 
-				RecalcIter++);
+			int RecalcIter = 0;
+			for( ; RecalcIter != m_Events.size() && m_Events[i]->GetActualTime() < part.m_fEventTimer; RecalcIter++);
 
 			// set our main iterator to the recalculated iterator
 			// the -1 just compensates for the i++ in the main for loop

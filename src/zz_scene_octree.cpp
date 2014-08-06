@@ -511,7 +511,8 @@ void zz_scene_octree::render_cull ()
 		render_rterrain();
 		render_opaque();
 		render_transparent();
-		render_glow();	
+		render_glow();
+		render_ssao();
 		render_ocean();
 		render_particle();
 	}
@@ -728,18 +729,15 @@ int zz_scene_octree::update_receive_shadow (zz_model * target)
 	for (i = 0; i < num_nodes; ++i) {
 		vis = this->get_collect_node(0, i);
 		assert(vis);
-		if (vis->is_descendant_of_type(ZZ_RUNTIME_TYPE(zz_model))) continue; // Do not care about the model visible.
 		cminmax = vis->get_minmax();
 		assert(cminmax);
 		if (target_top < cminmax[0].z) continue;
-        if (vis->is_a(ZZ_RUNTIME_TYPE(zz_terrain_block)))   //test  지형에만 그림
-		vis->set_receive_shadow_now(true);         //test 
+		if ( !vis->is_a(ZZ_RUNTIME_TYPE(zz_terrain_block)) && !vis->is_descendant_of_type(ZZ_RUNTIME_TYPE(zz_model)) ) {
+			// Brett19: All objects receive shadows!
+			//continue;
+		}
+		vis->set_receive_shadow_now(true);
 		count++;
-	    //조성현 2005 11 - 18 Test
-/*		zz_bvolume *bv = vis->get_bvolume();
-		if(bv)
-			input_scene_obb(bv->get_obb()); */
-	    
 	}
 	return count;
 }
@@ -893,7 +891,8 @@ void zz_scene_octree::update_distance (const vec3& cam_pos)
 			continue;
 		}
 		else if (node_type == ZZ_RUNTIME_TYPE(zz_morpher)) { // we assume morpher is a type of particle
-			particle_nodes.push_back(vis);
+			//particle_nodes.push_back(vis);
+			//continue;
 		}
 		else if (node_type == ZZ_RUNTIME_TYPE(zz_ocean_block)) {
 			ocean_nodes.push_back(vis);
@@ -1670,6 +1669,42 @@ void zz_scene_octree::dump_view ()
 	if (s_dump_view_flags[3])
 		for (int i = 0; i < num_delayed; ++i)
 			dump_view_sub("delayed", i, delayed_nodes[i]);
+}
+
+void zz_scene_octree::render_ssao ()
+{
+	zz_render_state * rs = znzin->get_rs();
+
+	if( !rs->use_ssao ) return;
+
+	PROFILER_RENDER_SUB(Prender_ssao, "scene_octree: render_ssao()\n", 0);
+
+	zz_renderer * r = znzin->renderer;
+
+	bool restore_begin = false;
+	if (r->scene_began()) {
+		r->end_scene();
+		restore_begin = true;
+	}
+
+	r->begin_ssao();
+
+	//if (num_glows) {
+		r->begin_scene(ZZ_RW_SSAO);
+		//render_sky2();
+		//render_oterrain();
+		//render_bterrain();
+		//render_rterrain();
+		render_opaque();
+		render_transparent();
+		r->end_scene();
+	//}
+
+	r->end_ssao();
+
+	if (restore_begin) {
+		r->begin_scene(ZZ_RW_SCENE);
+	}
 }
 
 void zz_scene_octree::render_glow ()

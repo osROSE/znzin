@@ -281,15 +281,7 @@ bool zz_sfx_ocean::render ()
 	sprite_tm.a00 = static_cast<float>(srcrect.right)/texture_width;
 	sprite_tm.a11 = static_cast<float>(srcrect.bottom)/texture_height;
 
-	DWORD depth_test;
-	LPDIRECT3DDEVICE9	d3d_device	= NULL;
-	d3d_device						= r->get_device();
-	 
-
-	d3d_device->GetRenderState(D3DRS_ZENABLE,&depth_test);
-	d3d_device->SetRenderState(D3DRS_ZENABLE,D3DZB_FALSE);
-	
-
+	bool depth_test = r->enable_zbuffer( false );
 
 	r->begin_sprite( ZZ_SPRITE_ALPHABLEND, "ocean" );
 	{
@@ -302,9 +294,7 @@ bool zz_sfx_ocean::render ()
 	}
 	r->end_sprite();
 	
-	
-	d3d_device->SetRenderState(D3DRS_ZENABLE,depth_test);
-	
+	r->enable_zbuffer( depth_test );
 	
 	return true;
 }
@@ -973,7 +963,7 @@ void zz_screen_sfx::render()
 	zz_renderer_d3d*	r			= (zz_renderer_d3d*)(znzin->renderer) ;
 	LPDIRECT3DDEVICE9	d3d_device	= NULL;
 	d3d_device						= r->get_device();
-	D3DVIEWPORT9 buffer_port;
+	//D3DVIEWPORT9 buffer_port;
 			
 	D3DXMatrixIdentity(&id_m);
 	  
@@ -2011,10 +2001,10 @@ void zz_avatar_selection_sfx::set_avatar_selection_viewport(float x, float y, fl
 	avatar_selection_viewport.maxz = 1.0f;
 	avatar_selection_viewport.minz = 0.0f;
 	
-	avatar_selection_viewport.x = x;
-	avatar_selection_viewport.y = y;
-	avatar_selection_viewport.width = width;
-	avatar_selection_viewport.height = height;
+	avatar_selection_viewport.x = (dword)x;
+	avatar_selection_viewport.y = (dword)y;
+	avatar_selection_viewport.width = (dword)width;
+	avatar_selection_viewport.height = (dword)height;
 }
 
 void zz_avatar_selection_sfx::clear_scene()

@@ -250,6 +250,12 @@ void useGlow ( int bUse )
 }
 
 ZZ_SCRIPT
+	void useSSAO ( int bUse )
+{
+	state->use_ssao = ISTRUE(bUse);
+}
+
+ZZ_SCRIPT
 void useFullSceneGlow ( int bUse )
 {
 	state->use_glow_fullscene = ISTRUE(bUse);
@@ -1482,15 +1488,18 @@ HNODE loadShader (
 				  )
 {
 	CHECK_INTERFACE(loadShader);
-	if (znzin->shaders->find(pShaderName)) {
-		//ZZ_LOG("interface: loadShader(%s) already exists\n", pShaderName);
-		return 0;
+
+	zz_shader * shader = (zz_shader *)znzin->shaders->find(pShaderName);
+
+	if (!shader) {
+		shader = (zz_shader *)znzin->shaders->spawn(pShaderName, ZZ_RUNTIME_TYPE(zz_shader));
+	} else {
+		// return false;
 	}
 
 	//ZZ_LOG("interface: loadShader(%s, %s, %s, %d, %d) done.\n",
 	//	pShaderName, pVertexShaderPath, pPixelShaderPath, bUseBinary, iVertexFormat);
 
-	zz_shader * shader = (zz_shader *)znzin->shaders->spawn(pShaderName, ZZ_RUNTIME_TYPE(zz_shader));
 	zz_assert(shader);
 
 	if (!shader) return 0;
@@ -1516,6 +1525,15 @@ HNODE loadShader (
 	}
 	else if (strcmp(pShaderName, "shader_terrain") == 0) {
 		zz_shader::terrain_shader = shader;
+	}
+	else if (strcmp(pShaderName, "shader_ssao") == 0 ) {
+		zz_shader::ssao_shader = shader;
+	}
+	else if (strcmp(pShaderName, "shader_ssao_skin") == 0 ) {
+		zz_shader::ssao_shader_skin = shader;
+	}
+	else if (strcmp(pShaderName, "shader_post_process") == 0 ) {
+		zz_shader::post_process_shader = shader;
 	}
 
 	return hShader;
@@ -2066,7 +2084,7 @@ void initZnzin (void)
 {
 	//ZZ_LOG("interface: initZnzin()\n");
 
-	ulong dxversion = get_dx_version();
+	ulong dxversion = DX_VERSION_9B;//get_dx_version();
 
 	if (dxversion < DX_VERSION_9B) {
 		
@@ -2636,6 +2654,8 @@ int renderNode (HNODE hNode)
 
 void executeFileCommand ( const char * file_name )
 {
+	return;
+
 	static uint64 old_time = 0;
 	static int count = 0;
 	zz_vfs_local fs;
@@ -2738,7 +2758,6 @@ int endScene ( void )
 		
 	CHECK_INTERFACE(endScene);
 	znzin->camera_sfx.return_camera();
-	znzin->screen_sfx.post_render();  
 	znzin->sprite_sfx.post_render();
 	
 	
@@ -2770,7 +2789,7 @@ void renderScene ( void )
 #else
 	CHECK_INTERFACE(renderScene);
 #endif
-	
+
 	znzin->view->render();
 	
 	// this should be out of renderScene() and should be in front of beginSprite()
@@ -2782,18 +2801,10 @@ void clearScreen ( void )
 {
 	CHECK_INTERFACE(clearScreen);
 	
-	if(znzin->screen_sfx.get_widescreen_mode())
-		znzin->screen_sfx.pre_clear_wide();
-
 	znzin->renderer->clear_screen();
-
-	if(znzin->screen_sfx.get_widescreen_mode())
-		znzin->screen_sfx.post_clear_wide();
 
 	znzin->camera_sfx.steal_camera();
 	znzin->sprite_sfx.pre_render();
-	znzin->screen_sfx.pre_render();
-
 }
 
 // for internal use
@@ -5170,8 +5181,7 @@ bool getHeightCollisionLevelOnOff ( HNODE hVisible )
 	zz_visible * vis = reinterpret_cast<zz_visible*>(hVisible);
 	zz_collision_level level = vis->get_collision_level();
 	
-	return ZZ_IS_HEIGHTONOY(level);
-	
+	return ZZ_IS_HEIGHTONOY(level) != 0;	
 }
 
 
@@ -7219,7 +7229,7 @@ ZZ_SCRIPT
 HNODE loadTexture ( 	ZSTRING pTextureName, ZSTRING pTextureFileName, int iMipLevels, int bUseFilter )
 {
 	return loadTextureWithPool( pTextureName, pTextureFileName, iMipLevels, bUseFilter, 
-		zz_device_resource::zz_resource_pool::ZZ_POOL_MANAGED );
+		zz_device_resource::ZZ_POOL_MANAGED );
 }
 
 ZZ_SCRIPT
@@ -7784,9 +7794,9 @@ int getSpriteTextureColor(HNODE hTexture,
 		color->r = (float)buffer_color[0];
 	}	
 	
-	
-	
 	d3d_tex->UnlockRect(0);
+
+	return 1;
 }
 
 
@@ -9317,21 +9327,6 @@ int drawAABB ( float vMin[3], float vMax[3], ZZ_COLOR Color )
 }
 
 ZZ_DLL
-void ScreenFadeInStart(float fade_in_t,float fade_m_t,float fade_out_t,int color_r,int color_g,int color_b)
-{
-
-   znzin->screen_sfx.start_fade_inout(fade_in_t,fade_m_t,fade_out_t,color_r,color_g,color_b);
-
-}
-
-ZZ_DLL
-void ScreenTransition(int state,float time)
-{
-   znzin->screen_sfx.start_screen_sfx(state,time);
-}
-
-
-ZZ_DLL
 void ObserverCameraTransform(int mouse_xx,int mouse_yy)
 {
    znzin->camera_sfx.update_angle(mouse_xx,mouse_yy);   
@@ -9433,33 +9428,6 @@ ZZ_DLL
 bool GetObserverCameraOnOff()
 {
 	return  znzin->camera_sfx.get_play_onoff();
-}
-
-ZZ_DLL
-void StopScreenFadeInOut()
-{
-	znzin->screen_sfx.stop();	  
-}
-
-ZZ_DLL
-void PlayWideScreen(float screen_ratio)
-{
-	if(!znzin->screen_sfx.get_widescreen_mode())
-	znzin->screen_sfx.play_widescreen_mode(screen_ratio);
-}
-
-ZZ_DLL
-void PlayWideScreenEx(int x,int y ,int width,int height)
-{
-	if(!znzin->screen_sfx.get_widescreen_mode())
-	znzin->screen_sfx.play_widescreen_mode(x,y,width,height);
-}
-
-ZZ_DLL
-void StopWideScreen()
-{
-	if(znzin->screen_sfx.get_widescreen_mode())
-	znzin->screen_sfx.stop_widescreen_mode();	
 }
 
 ZZ_DLL

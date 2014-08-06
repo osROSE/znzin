@@ -139,7 +139,7 @@ public:
 	void set_loop (bool is_loop);
 	bool get_loop (void);
 
-	void set_channel_interp_style (zz_node_type * channel_type, zz_interp_style style);
+	void set_channel_interp_style (zz_channel_format channel_format, zz_interp_style style);
 	const vec3& get_initial_position (void) { return initial_position; }
 	const quat& get_initial_rotation (void) { return initial_rotation; }
 	mat4& get_initialTM (mat4& initial_tm) {

@@ -101,6 +101,6 @@ const char * zz_error::get_text (zz_error_code error_code)
 
 #define ZZ_REG_ERROR( ERCODE, ERLANG, ERMSG ) zz_error err_##ERCODE##ERLANG (zz_error::ERCODE, zz_error::ERLANG, ERMSG);
 
-#include "zz_error_trans.txt"
+#include "zz_error_trans.inc"
 
 

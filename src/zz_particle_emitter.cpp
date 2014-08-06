@@ -72,6 +72,7 @@ bool zz_particle_emitter::load (zz_vfs * fs, bool loadnow)
 
 	uint32 iSequenceCnt = 0;
 	fs->read_uint32( iSequenceCnt );
+	assert( iSequenceCnt < 8 );
 
 	for( uint32 i = 0; i < iSequenceCnt; i++ )
 	{

@@ -10,7 +10,7 @@
 
 #include "zz_tier0.h"
 #include "zz_index_buffer.h"
-#include "zz_renderer_d3d.h"
+#include "zz_renderer.h"
 #include "zz_system.h"
 
 zz_index_buffer::zz_index_buffer () :

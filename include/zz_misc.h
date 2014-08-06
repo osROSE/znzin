@@ -54,8 +54,18 @@
 #include "zz_type.h"
 #endif
 
-int random_number(int imin, int imax);
-float random_number(float fmin, float fmax);
+inline int random_number(int imin, int imax)
+{
+	if (imin == imax) return(imin);
+	return((rand() % (abs(imax-imin)+1))+imin);
+}
+
+inline float random_number(float fmin, float fmax)
+{
+	if (fmin == fmax) return(fmin);
+	float frandom = (float)rand() / (float)RAND_MAX;
+	return((frandom * (float)fabs(fmax-fmin))+fmin);
+}
 
 inline vec3 random_number (vec3 vmin, vec3 vmax)
 {

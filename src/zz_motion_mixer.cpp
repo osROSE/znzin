@@ -114,15 +114,13 @@ void zz_motion_mixer::get_channel_data (int channel_index, zz_time time, void * 
 	zz_time time2 = long(t*arg2->get_total_time());
 
 		
-	if (arg1->channels[channel_index]->is_a(ZZ_RUNTIME_TYPE(zz_channel_position))) {
-		assert(arg2->channels[channel_index]->is_a(ZZ_RUNTIME_TYPE(zz_channel_position)));
+	if (arg1->channels[channel_index]->get_channel_format() == ZZ_CFMT_XYZ) {
 		arg1->get_channel_data(channel_index, time, (void *)&position1);
 		arg2->get_channel_data(channel_index, time2, (void *)&position2);
 		position3 = static_cast<vec3 *>(data);
 		*position3 = znzin->motion_tool.blend_position(position1, position2, t);
 	}
-	if (arg1->channels[channel_index]->is_a(ZZ_RUNTIME_TYPE(zz_channel_rotation))) {
-		assert(arg2->channels[channel_index]->is_a(ZZ_RUNTIME_TYPE(zz_channel_rotation)));
+	if (arg1->channels[channel_index]->get_channel_format() == ZZ_CFMT_WXYZ) {
 		arg1->get_channel_data(channel_index, time, (void *)&rotation1);
 		arg2->get_channel_data(channel_index, time2, (void *)&rotation2);
 		rotation3 = (quat *)data;

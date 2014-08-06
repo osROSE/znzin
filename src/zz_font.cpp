@@ -252,6 +252,9 @@ void zz_font::draw_text (zz_font_text& text)
 	case zz_font::OUTLINE_TYPE_SIMPLE:
 		draw_text_prim_outline_simple(text);
 		break;
+	case zz_font::OUTLINE_TYPE_THINSHADOW:
+		draw_text_prim_shadow_simple(text);
+		break;
 	default:
 		zz_assertf(0, "not supported font type");
 		break;

@@ -237,6 +237,9 @@ void useShadowmap ( int bUse );
 ZZ_SCRIPT
 void useGlow ( int bUse );
 
+ZZ_SCRIPT
+void useSSAO ( int bUse );
+
 /// 전화면 글로우효과를 사용할지 여부
 /// @bUse : 0(사용안함), 1(사용함)
 ZZ_SCRIPT
@@ -3096,12 +3099,6 @@ ZZ_DLL
 int drawAABB ( float vMin[3], float vMax[3], ZZ_COLOR Color );
 
 ZZ_DLL
-void ScreenFadeInStart(float fade_in_t,float fade_m_t,float fade_out_t,int color_r,int color_g,int color_b); 
-
-ZZ_DLL
-void ScreenTransition(int state,float time);
-
-ZZ_DLL
 void ObserverCameraTransform(int mouse_xx,int mouse_yy);
 
 ZZ_DLL
@@ -3131,18 +3128,6 @@ bool GetObserverCameraOnOff();
 
 ZZ_DLL
 void SetOceanSFXOnOff(bool onoff);
-
-ZZ_DLL
-void StopScreenFadeInOut();
-
-ZZ_DLL
-void PlayWideScreen(float screen_ratio);
-
-ZZ_DLL
-void PlayWideScreenEx(int x,int y ,int width,int height);
-
-ZZ_DLL
-void StopWideScreen();
 
 ZZ_DLL
 void UserObserverCamera(int bUse);

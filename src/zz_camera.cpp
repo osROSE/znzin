@@ -47,13 +47,13 @@ zz_camera::zz_camera(void) :
 	infrustum = true; // all cameras are in frustum.
 	inscene = true;
 	forced_transformation = false;
-	forced_system_transformation = false;
+    forced_system_transformation = false;
 
   
 	mass_a = 0.0f;
 	mass_v = 0.0f;
 	
-	delta_time = 0.02f;
+    delta_time = 0.02f;
 
 }
 
@@ -175,7 +175,7 @@ const mat4& zz_camera::get_transform_const (enum_transform_state_type matrix_typ
 		return modelview_matrix_;
 	}
 	else {
-		return projection_matrix_;
+     	return projection_matrix_;
 	}
 }
 
@@ -276,10 +276,10 @@ bool zz_camera::load (const char * file_name)
 
 	camera_file.read_string(magic_number, 7);
 	
-	// verify magic_number
+    // verify magic_number
 	if (strncmp(magic_number, ZZ_CAMERA_MAGICNUMBER, 7)) {
-		return false; // wrong version or file structure
-	}
+        return false; // wrong version or file structure
+    }
 
 	//camera_file.read_string(zca_id, 0);
 
@@ -472,23 +472,9 @@ void zz_camera::get_ray (vec2 screen_pos, vec3& origin, vec3& direction)
 	
 	// _11 = 2*n/(r - l), _22 = 2*n/(t - b)
 	
-	if(!znzin->screen_sfx.get_widescreen_mode())
-	{
-		v.x = (2.0f * screen_pos.x/znzin->view->get_width() - 1.0f) / projection_matrix_._11;
-		v.y = (1.0f - 2.0f * screen_pos.y/znzin->view->get_height()) / projection_matrix_._22;
-	}
-	else
-	{
-		zz_viewport view_port;
-		znzin->screen_sfx.get_widescreen_viewport(view_port);
-		int screen_x,screen_y;
+	v.x = (2.0f * screen_pos.x/znzin->view->get_width() - 1.0f) / projection_matrix_._11;
+	v.y = (1.0f - 2.0f * screen_pos.y/znzin->view->get_height()) / projection_matrix_._22;
 
-		screen_x = screen_pos.x-view_port.x;
-		screen_y = screen_pos.y-view_port.y;
-
-		v.x = (2.0f * screen_x/view_port.width - 1.0f) / projection_matrix_._11;
-		v.y = (1.0f - 2.0f * screen_y/view_port.height) / projection_matrix_._22;	 
-	}
 #ifdef	ZZ_ZRANGE_D3D
 	v.z = -1.0f; // we use right-handed modelview, but d3d use left-handed projection
 #else
@@ -698,42 +684,12 @@ void zz_camera::world2screen (const vec3& world_pos, vec3& screen_pos)
 	screen_pos.set(screen3.x, screen3.y, screen3.z);
 	// screen_pos = ([-1, 1], [-1, 1])
 	
-	
-	if(!znzin->screen_sfx.get_widescreen_mode())
-	{
-		float width, height;
-		width = (float)znzin->get_rs()->buffer_width;
-		height = (float)znzin->get_rs()->buffer_height;
-		screen_pos.x = (.5f*screen_pos.x + .5f)*(width - 1);
-		screen_pos.y = (.5f*screen_pos.y + .5f)*(height - 1);
-		screen_pos.y = (height - 1 - screen_pos.y);
-	}
-	else
-	{
-	   zz_viewport view_port;
-	   float screen_x,screen_y;
-	   znzin->screen_sfx.get_widescreen_viewport(view_port);
-		   
-	   screen_x=.5f*screen_pos.x + .5f;
-	   screen_y=.5f*screen_pos.y + .5f;
-
-	   if(screen_x<0.0f || screen_x>1.0f)
-			screen_x=10000;
-	   else
-	   {
-			screen_pos.x =screen_x*(view_port.width - 1)+view_port.x;
-	   }
-	   
-	   if(screen_y<0.0f || screen_y>1.0f)
-			screen_y=10000;
-	   else
-	   {
-			screen_pos.y = screen_y*(view_port.height - 1);
-			screen_pos.y = (view_port.height - 1 - screen_pos.y)+view_port.y;  
-	   }
-	   
- 
-	}
+	float width, height;
+	width = (float)znzin->get_rs()->buffer_width;
+	height = (float)znzin->get_rs()->buffer_height;
+	screen_pos.x = (.5f*screen_pos.x + .5f)*(width - 1);
+	screen_pos.y = (.5f*screen_pos.y + .5f)*(height - 1);
+	screen_pos.y = (height - 1 - screen_pos.y);
 }
 
 float zz_camera::get_far_plane (void)
@@ -785,7 +741,7 @@ const zz_viewfrustum& zz_camera::update_frustum (float margin)
 		cross.x = inv_m._11;
 		cross.y = inv_m._21;
 		cross.z = inv_m._31;
-	}
+    }
 	else
 	{
 		up = this->get_up();
@@ -966,18 +922,18 @@ void zz_camera::input_forced_transformation_element(const vec3& position_, const
 	if(true/*!forced_transformation*/)
 	{
 		forced_transformation = true;
-		
-		mat4 mat;
+        
+        mat4 mat;
 
 		mat = modelview_matrix_.inverse();
 				
 		start_position = mat.get_position();
-		start_rotation = mat.get_rotation();
-		final_position = position_;
+     	start_rotation = mat.get_rotation();
+        final_position = position_;
 		final_rotation = rotation_;
-		current_time = 0.0f;
+        current_time = 0.0f;
 		total_time = time;
-		
+	    
 		calculate_3rd_order_interpolation_func(0.25f);
 	
 	}
@@ -986,11 +942,11 @@ void zz_camera::input_forced_transformation_element(const vec3& position_, const
 void zz_camera::calculate_force_interpolation(zz_time diff_time)
 {
 	current_time += diff_time / 4800.0f;
-	
+    
 	if(current_time < total_time)
 	{
 		interpolation_func();
-	
+    
 		current_position = start_position + t_ratio2 * (final_position - start_position);
 		current_rotation = qslerp(start_rotation, final_rotation, t_ratio2);
 	}
@@ -1002,8 +958,8 @@ void zz_camera::calculate_force_interpolation(zz_time diff_time)
 		current_rotation = final_rotation;
 	}
 
-	mat4 mat;
-	
+    mat4 mat;
+    
 	mat.set(current_position, current_rotation);
 	modelview_matrix_ = mat.inverse();
 	look_at_inv(modelview_matrix_, eye_, center_, up_);
@@ -1041,21 +997,21 @@ void zz_camera::interpolation_func()
 void zz_camera::calculate_3rd_order_interpolation_func(float time_interval)
 {
 	t1_ = time_interval;
-	t2_ = 1.0f - time_interval;
-	
+    t2_ = 1.0f - time_interval;
+    
 	float t_start, t_end;
-	
-	mat4 mat,inv_mat;
+   	
+    mat4 mat,inv_mat;
 
 	t_start = 0.0f;
 	t_end = t1_;
 	
 	mat._11 = 1; mat._12 = t_start; mat._13 = t_start* t_start; mat._14 = t_start*t_start*t_start;
-	mat._21 = 0.0f; mat._22 = 1; mat._23 = 2*t_start; mat._24 = 3*t_start*t_start;
-	mat._31 = 1; mat._32 = t_end; mat._33 = t_end* t_end; mat._34 = t_end*t_end*t_end;
-	mat._41 = 0.0f; mat._42 = 1; mat._43 = 2*t_end; mat._44 = 3*t_end*t_end;
+    mat._21 = 0.0f; mat._22 = 1; mat._23 = 2*t_start; mat._24 = 3*t_start*t_start;
+    mat._31 = 1; mat._32 = t_end; mat._33 = t_end* t_end; mat._34 = t_end*t_end*t_end;
+    mat._41 = 0.0f; mat._42 = 1; mat._43 = 2*t_end; mat._44 = 3*t_end*t_end;
 
-	vec4 vec_value, vec_result;
+    vec4 vec_value, vec_result;
 	
 	vec_value.x = t_start;  // f(start) 
 	vec_value.y = 0;  // f`(start)
@@ -1065,17 +1021,17 @@ void zz_camera::calculate_3rd_order_interpolation_func(float time_interval)
 	inv_mat = mat.inverse();
 	vec_result = inv_mat * vec_value;
    
-	a1 = vec_result.x; b1 = vec_result.y; c1 = vec_result.z; d1 = vec_result.w;
+    a1 = vec_result.x; b1 = vec_result.y; c1 = vec_result.z; d1 = vec_result.w;
 
 	t_start = t2_;
 	t_end = 1.0f;
 	
 	mat._11 = 1; mat._12 = t_start; mat._13 = t_start* t_start; mat._14 = t_start*t_start*t_start;
-	mat._21 = 0.0f; mat._22 = 1; mat._23 = 2*t_start; mat._24 = 3*t_start*t_start;
-	mat._31 = 1; mat._32 = t_end; mat._33 = t_end* t_end; mat._34 = t_end*t_end*t_end;
-	mat._41 = 0.0f; mat._42 = 1; mat._43 = 2*t_end; mat._44 = 3*t_end*t_end;
+    mat._21 = 0.0f; mat._22 = 1; mat._23 = 2*t_start; mat._24 = 3*t_start*t_start;
+    mat._31 = 1; mat._32 = t_end; mat._33 = t_end* t_end; mat._34 = t_end*t_end*t_end;
+    mat._41 = 0.0f; mat._42 = 1; mat._43 = 2*t_end; mat._44 = 3*t_end*t_end;
 
-	
+ 	
 	vec_value.x = t_start;  // f(start) 
 	vec_value.y = 1;  // f`(start)
 	vec_value.z = t_end; // f(end)
@@ -1084,17 +1040,17 @@ void zz_camera::calculate_3rd_order_interpolation_func(float time_interval)
 	inv_mat = mat.inverse();
 	vec_result = inv_mat * vec_value;
    
-	a2 = vec_result.x; b2 = vec_result.y; c2 = vec_result.z; d2 = vec_result.w;
+    a2 = vec_result.x; b2 = vec_result.y; c2 = vec_result.z; d2 = vec_result.w;
 
 	t_start = t1_;
 	t_end = t2_;
 	
 	mat._11 = 1; mat._12 = t_start; mat._13 = t_start* t_start; mat._14 = t_start*t_start*t_start;
-	mat._21 = 0.0f; mat._22 = 1; mat._23 = 2*t_start; mat._24 = 3*t_start*t_start;
-	mat._31 = 1; mat._32 = t_end; mat._33 = t_end* t_end; mat._34 = t_end*t_end*t_end;
-	mat._41 = 0.0f; mat._42 = 1; mat._43 = 2*t_end; mat._44 = 3*t_end*t_end;
+    mat._21 = 0.0f; mat._22 = 1; mat._23 = 2*t_start; mat._24 = 3*t_start*t_start;
+    mat._31 = 1; mat._32 = t_end; mat._33 = t_end* t_end; mat._34 = t_end*t_end*t_end;
+    mat._41 = 0.0f; mat._42 = 1; mat._43 = 2*t_end; mat._44 = 3*t_end*t_end;
 
-	
+ 	
 	vec_value.x = t_start;  // f(start) 
 	vec_value.y = 1;  // f`(start)
 	vec_value.z = t_end; // f(end)
@@ -1125,7 +1081,7 @@ void zz_camera::calculate_spring_system()
 void zz_camera::calculate_force_interpolation_system(zz_time diff_time)
 {
 	current_time += diff_time / 4800.0f;
-	
+    
 	if(fabsf(t_ratio2) < 1.0f)
 	{
 		calculate_spring_system();
@@ -1141,8 +1097,8 @@ void zz_camera::calculate_force_interpolation_system(zz_time diff_time)
 		current_rotation = final_rotation;
 	}
 
-	mat4 mat;
-	
+    mat4 mat;
+    
 	mat.set(current_position, current_rotation);
 	modelview_matrix_ = mat.inverse();
 	look_at_inv(modelview_matrix_, eye_, center_, up_);
@@ -1155,20 +1111,20 @@ void zz_camera::input_forced_transformation_system_element(const vec3& position_
 	if(!forced_transformation)
 	{
 		forced_system_transformation = true;
-		
-		mat4 mat;
+        
+        mat4 mat;
 
 		mat = modelview_matrix_.inverse();
 				
 		start_position = mat.get_position();
-		start_rotation = mat.get_rotation();
-		final_position = position_;
+     	start_rotation = mat.get_rotation();
+        final_position = position_;
 		final_rotation = rotation_;
-		current_time = 0.0f;
+        current_time = 0.0f;
 		total_time = time;
-		
+	    
 		spring_length = 0.0f;
-		mass_a = 0.0f;
+        mass_a = 0.0f;
 		mass_v = 0.0f;
 		t_ratio2 = 0.0f;
 		t_ratio1 = 0.0f;

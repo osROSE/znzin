@@ -83,6 +83,9 @@ zz_shader * zz_shader::shadow_shader_skin = NULL;
 zz_shader * zz_shader::glow_shader = NULL;
 zz_shader * zz_shader::glow_shader_skin = NULL;
 zz_shader * zz_shader::terrain_shader = NULL;
+zz_shader * zz_shader::ssao_shader = NULL;
+zz_shader * zz_shader::ssao_shader_skin = NULL;
+zz_shader * zz_shader::post_process_shader = NULL;
 
 zz_shader::zz_shader(void) :
 	num_format(0),
@@ -110,7 +113,7 @@ zz_shader::~zz_shader(void)
 zz_handle zz_shader::create_vshader (const char * vshader_filename, int format_in)
 {
 	assert(vshader_filename);
-	assert(!ZZ_HANDLE_IS_VALID(vshader_handles[format_in]));
+	//assert(!ZZ_HANDLE_IS_VALID(vshader_handles[format_in]));
 	
 	if (format_in >= num_format) {
 		num_format = format_in + 1;
@@ -135,7 +138,7 @@ zz_handle zz_shader::create_vshader (const char * vshader_filename, int format_i
 zz_handle zz_shader::create_pshader (const char * pshader_filename, int format_in)
 {
 	assert(pshader_filename);
-	assert(!ZZ_HANDLE_IS_VALID(pshader_handles[format_in]));
+	//assert(!ZZ_HANDLE_IS_VALID(pshader_handles[format_in]));
 	assert(format_in < num_format);
 
 	zz_handle handle = znzin->renderer->create_pixel_shader(pshader_filename, is_binary);
@@ -214,10 +217,37 @@ zz_handle zz_shader::get_vshader (int format_in, ZZ_RENDERWHERE render_where) co
 			return (glow_shader) ? glow_shader->vshader_handles[0] : ZZ_HANDLE_NULL;
 		}
 	}
+	else if (render_where == ZZ_RW_SSAO) {
+		if (vformat.use_skin()) {
+			zz_assert(ssao_shader_skin);
+			return (ssao_shader_skin) ? ssao_shader_skin->vshader_handles[0] : ZZ_HANDLE_NULL;
+		}
+		else {
+			zz_assert(ssao_shader);
+			return (ssao_shader) ? ssao_shader->vshader_handles[0] : ZZ_HANDLE_NULL;
+		}
+	}
 
 	// default render where
 	zz_assert(format_in < num_format);
 	return vshader_handles[format_in];
+}
+
+zz_handle zz_shader::get_pshader (int format_in, ZZ_RENDERWHERE render_where) const
+{
+	if (render_where == ZZ_RW_SSAO) {
+		if (vformat.use_skin()) {
+			zz_assert(ssao_shader_skin);
+			return (ssao_shader_skin) ? ssao_shader_skin->pshader_handles[0] : ZZ_HANDLE_NULL;
+		}
+		else {
+			zz_assert(ssao_shader);
+			return (ssao_shader) ? ssao_shader->pshader_handles[0] : ZZ_HANDLE_NULL;
+		}
+	}
+
+	assert(format_in < num_format);
+	return pshader_handles[format_in];
 }
 
 bool zz_shader::check_system_shaders ()

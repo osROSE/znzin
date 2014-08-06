@@ -558,10 +558,10 @@ void zz_model::bind_channels ()
 		}
 #endif
 
-		if (channels[i]->is_a(ZZ_RUNTIME_TYPE(zz_channel_position))) {
+		if (channels[i]->get_channel_format() == ZZ_CFMT_XYZ) {
 			bones[bone_id]->set_position_channel_index(i);
 		}
-		else if (channels[i]->is_a(ZZ_RUNTIME_TYPE(zz_channel_rotation))) {
+		else if (channels[i]->get_channel_format() == ZZ_CFMT_WXYZ) {
 			zz_bone * one = bones[bone_id];
 			if (one) {
 				bones[bone_id]->set_rotation_channel_index(i);
@@ -1198,7 +1198,7 @@ void zz_model::update_transform (zz_time diff_time)
 }
 
 void zz_model::set_virtual_Transform (const vec4& pos)
-{
+{	
 	vec4 inv_pos;
 	
 	worldTM._14 = pos.x; worldTM._24 = pos.y; worldTM._34 = pos.z; worldTM._44 = 1.0f;
@@ -1270,7 +1270,8 @@ void zz_model::expand_scene_minmax_height (vec3& scene_min_out, vec3& scene_max_
 		{
 			child_minmax = child->get_minmax();
 
-			assert(child->is_valid_bvolume());
+			// TODO: Figure out why this needs to be commented
+			//assert(child->is_valid_bvolume());
 			if (child_minmax[0].x < scene_min_out.x) scene_min_out.x = child_minmax[0].x;
 			if (child_minmax[0].y < scene_min_out.y) scene_min_out.y = child_minmax[0].y;
 			if (child_minmax[0].z < scene_min_out.z) scene_min_out.z = child_minmax[0].z;

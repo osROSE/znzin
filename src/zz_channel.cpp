@@ -51,8 +51,6 @@
 #include "zz_node.h"
 #include "zz_channel.h"
 
-ZZ_IMPLEMENT_DYNAMIC(zz_channel, zz_node)
-
 zz_channel::zz_channel(zz_interp_style new_interp_style) : interp_style(new_interp_style)
 {
 }

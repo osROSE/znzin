@@ -22,7 +22,7 @@
 // d3d<->znzin color conversion
 /* from
 #define D3DCOLOR_ARGB(a,r,g,b) \
-    ((D3DCOLOR)((((a)&0xff)<<24)|(((r)&0xff)<<16)|(((g)&0xff)<<8)|((b)&0xff)))
+	((D3DCOLOR)((((a)&0xff)<<24)|(((r)&0xff)<<16)|(((g)&0xff)<<8)|((b)&0xff)))
 */
 #define ZZ_COLOR_RGBA(r, g, b, a) (D3DCOLOR_ARGB((a), (r), (g), (b)))
 #define ZZ_TO_D3DRGBA(r, g, b, a) (D3DCOLOR_ARGB(int(255.0f*(a)), int(255.0f*(r)), int(255.0f*(g)), int(255.0f*(b))))
@@ -51,12 +51,12 @@ private:
 
 	// wrapper for CreateDevice
 	HRESULT _create_device (
-    UINT Adapter,
-    D3DDEVTYPE DeviceType,
-    HWND hFocusWindow,
-    DWORD BehaviorFlags,
-    D3DPRESENT_PARAMETERS *pPresentationParameters,
-    IDirect3DDevice9 **ppReturnedDeviceInterface
+	UINT Adapter,
+	D3DDEVTYPE DeviceType,
+	HWND hFocusWindow,
+	DWORD BehaviorFlags,
+	D3DPRESENT_PARAMETERS *pPresentationParameters,
+	IDirect3DDevice9 **ppReturnedDeviceInterface
 	);
 
 protected:
@@ -85,6 +85,14 @@ protected:
 	LPDIRECT3DSURFACE9 v_backbuffer_surface; // rendertarget surface for backbuffer
 	LPDIRECT3DSURFACE9 v_backbuffer_zsurface; // rendertarget depth surface for backbuffer
 	LPDIRECT3DTEXTURE9 v_backbuffer_texture; // rendertarget texture for backbuffer
+
+	// for ssao effect
+	LPDIRECT3DSURFACE9 ssao_backbuffer_surface; // full-size ssao backbuffer surface with ordinary backbuffer)
+	LPDIRECT3DTEXTURE9 ssao_backbuffer_texture; // full-size ssao texture
+	LPDIRECT3DSURFACE9 ssao_backbuffer_surface2; // full-size ssao backbuffer surface with ordinary backbuffer)
+	LPDIRECT3DTEXTURE9 ssao_backbuffer_texture2; // full-size ssao texture
+
+	LPDIRECT3DTEXTURE9 noise_tex;
 
 	// for glow effect
 	// 1. render glow objects into the glow_backbuffer.
@@ -118,7 +126,7 @@ protected:
 	
 	// pointer to the view class
 	zz_view_d3d * view;
-    
+	
 	// vertex shader handle
 	zz_pool<LPDIRECT3DVERTEXDECLARATION9> vertex_decls; // =+ always in pair
 	zz_pool<LPDIRECT3DVERTEXSHADER9> vertex_shaders;    // =+
@@ -153,7 +161,7 @@ protected:
 	zz_gamma current_gamma;
 
 	zz_camera * light_camera, * saved_camera;
-	D3DVIEWPORT9 old_viewport, shadowmap_viewport, glow_viewport, glow_downsample_viewport;
+	D3DVIEWPORT9 old_viewport, shadowmap_viewport, glow_viewport, glow_downsample_viewport, ssao_viewport;
 	D3DVIEWPORT9 default_viewport;
 	D3DVIEWPORT9 overlay_viewport;
 
@@ -199,6 +207,7 @@ protected:
 	bool _begin_scene (const char * msg);
 	bool _end_scene (const char * msg);
 
+	bool create_ssao_textures ();
 	bool create_glow_textures ();
 
 	void create_default_sprite ();
@@ -251,7 +260,7 @@ public:
 	// vertex shader
 	bool set_vertex_shader (zz_handle shader_index);
 	int create_vertex_shader (const char * shader_file_name,
-        int vertex_format, bool is_binary = false);
+		int vertex_format, bool is_binary = false);
 	void destroy_vertex_shader (int vertex_shader_handle);
 	bool support_vertex_shader ();
 	void set_vertex_shader_constant (int register_index, const void * constant_data, int coustant_count);
@@ -304,16 +313,16 @@ public:
 	mat4 matrix_pop (void);
 
 	void draw_line (vec3 from, vec3 to, vec3 rgb);
-    void draw_arrow(float size, int color);
+	void draw_arrow(float size, int color);
 	void draw_axis(float size);
-    void draw_axis(float *q, float *v, float size);
+	void draw_axis(float *q, float *v, float size);
 	void draw_camera();
-    void draw_camera_ex(const mat4& view_mat);
+	void draw_camera_ex(const mat4& view_mat);
 	void draw_camera(mat4& camera_matrix);   
 	void draw_camera_frustum();
 	void draw_shadowmap();
-    void draw_wire_sphere(float x, float y, float z, float r);
-    void draw_wire_cylinder(float x, float y, float z, float length, float r);
+	void draw_wire_sphere(float x, float y, float z, float r);
+	void draw_wire_cylinder(float x, float y, float z, float length, float r);
 	void draw_visible_boundingbox(const mat4& matrix, float min_vec[3], float max_vec[3],DWORD color);
 	void draw_axis_object(mat4& object_matrix, float size); 
 
@@ -381,7 +390,7 @@ public:
 	virtual bool flush_sprite ();
 	virtual bool sprite_began ();
 	virtual bool draw_sprite (zz_texture * tex, const zz_rect * src_rect, const vec3 * center, const vec3 * position, color32 color);
-    virtual bool draw_sprite_ex ( zz_texture * tex, const zz_rect * src_rect, const vec3 * center, const vec3 * position, color32 color);
+	virtual bool draw_sprite_ex ( zz_texture * tex, const zz_rect * src_rect, const vec3 * center, const vec3 * position, color32 color);
 	virtual bool draw_sprite_cover (zz_texture * tex, const zz_rect * src_rect, const vec3 * center, const vec3 * position, color32 orgin_color, color32 cover_color, float value);
 
 	// only for d3d implementation
@@ -406,6 +415,9 @@ public:
 	void test();
 #endif
 	
+	void begin_ssao ();
+	void end_ssao ();
+
 	void begin_glow ();
 	void end_glow ();
 	void downsample_glow ();
@@ -416,11 +428,14 @@ public:
 	// render final blurred glowmap into the backbuffer
 	virtual void overlay_glow (bool object_glow, bool fullscene_glow);
 
+	void draw_post_process( zz_shader * shader, int pass = 0 );
+
 	virtual void pre_process ();
 	virtual void post_process ();
 
 	static const char * get_hresult_string (HRESULT hr);
 
+	virtual bool check_ssaoable ();
 	virtual bool check_glowable ();
 	virtual bool check_shadowable ();
 

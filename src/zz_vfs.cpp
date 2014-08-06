@@ -144,7 +144,7 @@
 #include <string.h>
 #include "zz_mem.h"
 #include "zz_vfs.h"
-#include "zz_vfs_zip.h"
+//#include "zz_vfs_zip.h"
 #include "zz_vfs_local.h"
 #include "zz_vfs_pkg.h"
 #include "zz_log.h"
@@ -182,7 +182,7 @@ uint32 zz_vfs::read(uint32 size)
 	return read_count;
 }
 
-zz_vfs::zz_vfs_protocol zz_vfs::parse_protocol_ (const char * filename /* in */, char * &real_filename /* out */)
+zz_vfs::zz_vfs_protocol zz_vfs::parse_protocol_ (const char * filename /* in */, const char * &real_filename /* out */)
 {
 	const char ftp_string[] = FTP_STRING;
 	const char http_string[] = HTTP_STRING;

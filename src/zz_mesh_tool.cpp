@@ -28,6 +28,7 @@
 #include "zz_vfs_thread.h"
 #include "zz_vfs_pkg.h"
 #include "zz_model.h"
+#include "zz_fast_reader.h"
 
 #pragma comment (lib, "d3d9.lib")
 #pragma comment (lib, "d3dx9.lib")
@@ -485,6 +486,7 @@ bool zz_mesh_tool::load_mesh_8 ( const char * file_name, zz_mesh * mesh, bool te
 
 	int version = 0;
 	zz_vfs_pkg mesh_file;
+	zz_fast_reader mesh_rdr;
 	
 	if (!mesh_file.open(file_name, zz_vfs::ZZ_VFS_READ)) {
 		ZZ_LOG("mesh_tool: load_mesh(%s) failed. cannot open file\n", file_name);
@@ -557,19 +559,31 @@ bool zz_mesh_tool::load_mesh_8 ( const char * file_name, zz_mesh * mesh, bool te
 	mesh->bone_indices.clear();
 
 	// [bone]
+	mesh_rdr.load( mesh_file, 2 * num_bones );
+
 	for (i = 0; i < num_bones; i++) {
-		mesh_file.read_uint16(uint16_buf); // bone index
+		mesh_rdr.read_uint16(uint16_buf); // bone index
 		mesh->bone_indices.push_back(uint16_buf);
 	}
 
 	// [num_verts]
 	mesh_file.read_uint16(num_verts);
-	
-	// [positions]
 	mesh->set_num_verts(num_verts);
 
+	// [positions]
+	int format_size = 12;
+	format_size += format.use_normal( ) ? 12 : 0;
+	format_size += format.use_color( ) ? 16 : 0;
+	format_size += format.use_skin( ) ? 24 : 0;
+	format_size += format.use_tangent( ) ? 12 : 0;
+	format_size += format.get_num_mapchannel() * 8;
+
+	mesh_rdr.load( mesh_file, format_size * num_verts );
+
 	for (i = 0; i < num_verts; ++i) {
-		mesh_file.read_float3(xyz.vec_array);
+		mesh_rdr.read_float(xyz.x);
+		mesh_rdr.read_float(xyz.y);
+		mesh_rdr.read_float(xyz.z);
 		mesh->set_pos(i, xyz);
 	}
 
@@ -582,7 +596,9 @@ bool zz_mesh_tool::load_mesh_8 ( const char * file_name, zz_mesh * mesh, bool te
 	}
 	else if (format.use_normal()) {
 		for (i = 0; i < num_verts; ++i) {
-			mesh_file.read_float3(xyz.vec_array);
+			mesh_rdr.read_float(xyz.x);
+			mesh_rdr.read_float(xyz.y);
+			mesh_rdr.read_float(xyz.z);
 			mesh->set_normal(i, xyz);
 		}
 	}
@@ -590,7 +606,10 @@ bool zz_mesh_tool::load_mesh_8 ( const char * file_name, zz_mesh * mesh, bool te
 	// [color]
 	if (format.use_color()) {
 		for (i = 0; i < num_verts; ++i) {
-			mesh_file.read_float4(xyzw.vec_array);
+			mesh_rdr.read_float(xyzw.x);
+			mesh_rdr.read_float(xyzw.y);
+			mesh_rdr.read_float(xyzw.z);
+			mesh_rdr.read_float(xyzw.w);
 			mesh->set_color(i, zz_color((char)(xyzw.x*255.0f), (char)(xyzw.y*255.0f), (char)(xyzw.z*255.0f), (char)(xyzw.w*255.0f))); // A >> R >> G >> B
 		}
 	}
@@ -608,8 +627,14 @@ bool zz_mesh_tool::load_mesh_8 ( const char * file_name, zz_mesh * mesh, bool te
 	if (format.use_skin()) {
 		blend_sum = 0.0f;
 		for (i = 0; i < num_verts; ++i) {
-			mesh_file.read_float4(xyzw.vec_array);
-			mesh_file.read_uint164(usxyzw.ushort_array);
+			mesh_rdr.read_float(xyzw.x);
+			mesh_rdr.read_float(xyzw.y);
+			mesh_rdr.read_float(xyzw.z);
+			mesh_rdr.read_float(xyzw.w);
+			mesh_rdr.read_uint16(usxyzw.x);
+			mesh_rdr.read_uint16(usxyzw.y);
+			mesh_rdr.read_uint16(usxyzw.z);
+			mesh_rdr.read_uint16(usxyzw.w);
 
 			// confirm data
 			blend_sum = xyzw.x + xyzw.y + xyzw.z + xyzw.w;
@@ -686,7 +711,9 @@ bool zz_mesh_tool::load_mesh_8 ( const char * file_name, zz_mesh * mesh, bool te
 	// [tangent]
 	if (format.use_tangent()) {
 		for (i = 0; i < num_verts; ++i) {
-			mesh_file.read_float3(xyz.vec_array);
+			mesh_rdr.read_float(xyz.x);
+			mesh_rdr.read_float(xyz.y);
+			mesh_rdr.read_float(xyz.z);
 			mesh->set_tangent(i, xyz);
 		}
 	}
@@ -697,7 +724,8 @@ bool zz_mesh_tool::load_mesh_8 ( const char * file_name, zz_mesh * mesh, bool te
 	int num_mapchannel = format.get_num_mapchannel();
 	for (uint16 i_channel = 0; i_channel < num_mapchannel; ++i_channel) {
 		for (i = 0; i < num_verts; ++i) {
-			mesh_file.read_float2(xy.vec_array);
+			mesh_rdr.read_float(xy.x);
+			mesh_rdr.read_float(xy.y);
 			mesh->set_uv(i, i_channel, xy);
 		}
 	}
@@ -707,8 +735,12 @@ bool zz_mesh_tool::load_mesh_8 ( const char * file_name, zz_mesh * mesh, bool te
 	assert(num_faces < MAX_NUM_FACES);
 	mesh->set_num_faces(num_faces);
 
+	mesh_rdr.load( mesh_file, 6 * num_faces );
+
 	for (i = 0; i < num_faces; i++) {
-		mesh_file.read_uint163(usxyz.ushort_array);
+		mesh_rdr.read_uint16(usxyz.x);
+		mesh_rdr.read_uint16(usxyz.y);
+		mesh_rdr.read_uint16(usxyz.z);
 		mesh->set_face(i, usxyz);
 	}
 
@@ -718,8 +750,10 @@ bool zz_mesh_tool::load_mesh_8 ( const char * file_name, zz_mesh * mesh, bool te
 	mesh_file.read_uint16(num_matids);
 	mesh->set_num_matids(num_matids);
 
+	mesh_rdr.load( mesh_file, 2 * num_matids );
+
 	for (i = 0; i < num_matids; i++) {
-		mesh_file.read_uint16(matid_numfaces);
+		mesh_rdr.read_uint16(matid_numfaces);
 		mesh->set_matid_numfaces(i, matid_numfaces);
 	}
 	// set clipfaces

@@ -116,12 +116,12 @@ bool zz_motion_tool::load_motion (zz_motion * motion,
 	zz_interp_style pos_style, rot_style;
 
 	pos_style = static_cast<zz_interp_style>((int)interp_position);
-	motion->set_channel_interp_style(ZZ_RUNTIME_TYPE(zz_channel_position), pos_style);
-	motion->set_channel_interp_style(ZZ_RUNTIME_TYPE(zz_channel_xy), pos_style); // set by position
-	motion->set_channel_interp_style(ZZ_RUNTIME_TYPE(zz_channel_x), pos_style);  // set by position
+	motion->set_channel_interp_style(ZZ_CFMT_XYZ, pos_style);
+	motion->set_channel_interp_style(ZZ_CFMT_XY, pos_style); // set by position
+	motion->set_channel_interp_style(ZZ_CFMT_X, pos_style);  // set by position
 	
 	rot_style = static_cast<zz_interp_style>((int)interp_rotation);
-	motion->set_channel_interp_style(ZZ_RUNTIME_TYPE(zz_channel_rotation), rot_style);
+	motion->set_channel_interp_style(ZZ_CFMT_WXYZ, rot_style);
 
 	return true;
 }

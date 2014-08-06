@@ -56,19 +56,6 @@
 #include <stdlib.h>
 #include "zz_misc.h"
 
-int random_number(int imin, int imax)
-{
-	if (imin == imax) return(imin);
-	return((rand() % (abs(imax-imin)+1))+imin);
-}
-
-float random_number(float fmin, float fmax)
-{
-	if (fmin == fmax) return(fmin);
-	float frandom = (float)rand() / (float)RAND_MAX;
-	return((frandom * (float)fabs(fmax-fmin))+fmin);
-}
-
 /*
 // [REF] http://www.flipcode.org/cgi-bin/fcarticles.cgi?show=4&id=64182
 

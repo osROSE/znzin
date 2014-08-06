@@ -145,6 +145,7 @@ protected:
 	void render_particle ();
 	void render_fonts ();
 	void render_glow ();
+	void render_ssao ();
 	void render_sky ();
 	void render_sky2 ();
 	void render_sky_glow ();

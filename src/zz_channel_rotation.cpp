@@ -54,8 +54,6 @@
 #include "zz_algebra.h"
 #include "zz_profiler.h"
 
-ZZ_IMPLEMENT_DYNCREATE(zz_channel_rotation, zz_channel)
-
 zz_channel_rotation::zz_channel_rotation(void) : zz_channel(ZZ_INTERP_SQUAD),
 	rotations(0),
 	num_rotations(0)

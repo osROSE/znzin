@@ -296,12 +296,13 @@ typedef enum _ZZ_TEXTURETRANSFORMFLAGS {
 
 
 typedef enum _ZZ_RENDERWHERE {
-	ZZ_RW_NONE      = 0,       // not in begin_scene() end_scene()
-	ZZ_RW_SCENE     = 1,       // normal begin_scene() end_scene()
-	ZZ_RW_SHADOWMAP = 2,       // in shadow rendering
-	ZZ_RW_GLOW = 3, // render glow
-	ZZ_RW_TEXTURE = 4, // render to texture
-	ZZ_RW_ENVMAP = 5
+	ZZ_RW_NONE      = 0,		// not in begin_scene() end_scene()
+	ZZ_RW_SCENE     = 1,		// normal begin_scene() end_scene()
+	ZZ_RW_SHADOWMAP = 2,		// in shadow rendering
+	ZZ_RW_GLOW		= 3,		// render glow
+	ZZ_RW_TEXTURE	= 4,		// render to texture
+	ZZ_RW_ENVMAP	= 5,		// Environment Map
+	ZZ_RW_SSAO		= 6			// SSAO Depth/Normal Texture
 } ZZ_RENDERWHERE;
 
 typedef enum _ZZ_BLENDTYPE {
@@ -673,6 +674,9 @@ public:
 	// only for debugging
 	virtual void test() = 0;
 #endif
+
+	virtual void begin_ssao () = 0;
+	virtual void end_ssao () = 0;
 
 	virtual void begin_glow () = 0;
 	virtual void end_glow () = 0;

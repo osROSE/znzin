@@ -188,6 +188,35 @@ void zz_font_d3d::draw_text_prim_outline_simple (const zz_font_text& text_item)
 	}
 }
 
+void zz_font_d3d::draw_text_prim_shadow_simple (const zz_font_text& text_item)
+{
+	assert(!text_item.to_texture);
+
+	zz_renderer_d3d * r = static_cast<zz_renderer_d3d*>(znzin->renderer);
+
+	if (!text_item.use_sprite) { // begin sprite
+		zz_assert(!r->sprite_began());
+		r->begin_sprite(ZZ_SPRITE_ALPHABLEND, "draw_text_prim_outline_simple");
+		// we assumes that identity matrix transform is the default
+	}
+	else {
+		zz_assert(r->sprite_began());
+	}
+
+	zz_font_text item(text_item);
+
+	// overwrite color with outline color
+	item.color = font_color_outline;
+	draw_text_prim_offset(item,	1.0f, 1.0f);
+
+	item.color = font_color;
+	draw_text_prim_offset(item, 0, 0);
+
+	if (!text_item.use_sprite) { // end sprite
+		r->end_sprite();
+	}
+}
+
 INT zz_font_d3d::_draw_text ( LPD3DXSPRITE pSprite, const char * pString, INT Count, LPRECT pRect, DWORD Format, D3DCOLOR Color )
 {
 	assert(_d3d_font);

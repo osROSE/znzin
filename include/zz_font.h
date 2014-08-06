@@ -57,6 +57,7 @@ protected:
 	virtual void draw_text_prim (const zz_font_text& text) = 0; // draw text primitive function without outline
 	virtual void draw_text_prim_offset (const zz_font_text& text_item, float offsetx, float offsety) = 0;
 	virtual void draw_text_prim_outline_simple (const zz_font_text& text_item) = 0;
+	virtual void draw_text_prim_shadow_simple (const zz_font_text& text_item) = 0;
 
 	// calc rect by ix and iy, and return false if width or height is zero.
 	bool get_rect (zz_rect& rect_out, int ix, int iy, const char * msg);

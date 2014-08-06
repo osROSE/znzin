@@ -43,6 +43,8 @@
 #pragma comment (lib, "d3d9.lib")
 #pragma comment (lib, "d3dx9.lib")
 
+#define _NVPERFHUD_ENABLED
+
 typedef struct
 {
 	D3DXVECTOR4 p;
@@ -132,6 +134,10 @@ zz_renderer_d3d::zz_renderer_d3d () : zz_renderer()
 	v_backbuffer_texture = NULL;
 	v_backbuffer_zsurface = NULL;
 	v_backbuffer_surface = NULL;
+	ssao_backbuffer_surface = NULL;
+	ssao_backbuffer_texture = NULL;
+	ssao_backbuffer_surface2 = NULL;
+	ssao_backbuffer_texture2 = NULL;
 	glow_backbuffer_surface = NULL;
 	glow_backbuffer_texture = NULL;
 	glow_downsample_texture = NULL;
@@ -146,7 +152,8 @@ zz_renderer_d3d::zz_renderer_d3d () : zz_renderer()
 	sprite_vertexbuffer_origin_ex = NULL;
 	boundingbox_vertexbuffer = NULL;
 	boundingbox_indexbuffer = NULL;
-	
+
+	noise_tex = NULL;
 	use_virtual_backbuffer = false;
 	d3d_sprite = NULL;
 	_sprite_began = false;
@@ -253,8 +260,8 @@ bool zz_renderer_d3d::find_adapter_ordinal (
 		
 		UINT num_adapter_modes = d3d->GetAdapterModeCount( adapter_ordinal_out, adapter_format_in );
 
-#if (0) // to not using nVidia PerfHUD
-		if (strcmp(adapter_identifier.Description,"NVIDIA NVPerfHUD") == 0)
+#ifdef _NVPERFHUD_ENABLED
+		if (strstr(adapter_identifier.Description,"PerfHUD") != 0)
 		{
 			s_nvperf_found = true;
 			s_nvperf_adapter = adapter_ordinal_out;
@@ -336,7 +343,10 @@ bool zz_renderer_d3d::find_adapter_ordinal (
 		}
 	}
 
-	if (found) {
+	if( !s_nvperf_found ) {
+		// OVERRIDE CUZ I HATE AUTOMATIC SELECTION BS
+		adapter_ordinal_out = D3DADAPTER_DEFAULT;
+	} else if( found ) {
 		ZZ_LOG("r_d3d: best adapter ordinal = adapter(%d)-mode(%d)-(%dx%dx%d-%s)-(%d)Hz.\n",
 			best_ordinal, best_mode, width_in, height_in, best_bpp, use_fullscreen_in ? "full" : "window",
 			best_refresh_rate);
@@ -435,6 +445,46 @@ bool zz_renderer_d3d::check_shadowable ()
 		ZZ_LOG("r_d3d: rendertarget32 not support.\n");
 		return false;
 	}
+	return true;
+}
+
+bool zz_renderer_d3d::check_ssaoable ()
+{
+	zz_assert(has_device());
+
+	if( !state.use_pixel_shader ) {
+		// We cant run SSAO without pixel shaders
+		return false;
+	}
+
+	if (get_num_simultaneous_render_target() < 1) {
+		ZZ_LOG("r_d3d: num_simultaneous_render_target < 1. check_ssaoable() failed.\n");
+		return false;
+	}
+
+	if (FAILED(d3d->CheckDeviceFormat(
+		adapter_ordinal,
+		D3DDEVTYPE_HAL,
+		adapter_format,
+		D3DUSAGE_RENDERTARGET,
+		D3DRTYPE_TEXTURE,
+		RENDERTARGET_FORMAT32)))
+	{
+		ZZ_LOG("r_d3d: not support 32format rendertarget texture.\n");
+		return false;
+	}
+
+	if ((device_capability.MaxTextureWidth < (WORD)state.buffer_width) ||
+		(device_capability.MaxTextureHeight < (WORD)state.buffer_height))
+	{
+		ZZ_LOG("r_d3d: not support %x% texture. limit(%dx%d)\n",
+			state.buffer_width, state.buffer_height, 
+			device_capability.MaxTextureWidth, 
+			device_capability.MaxTextureHeight);
+		return false;
+	}
+
+	ZZ_LOG("r_d3d: check_ssaoable() ok.\n");
 	return true;
 }
 
@@ -964,6 +1014,66 @@ void zz_renderer_d3d::fill_glow_vb ()
 	if (FAILED(glow_vb->Unlock())) return;
 }
 
+bool zz_renderer_d3d::create_ssao_textures ()
+{
+	zz_assert(NULL == ssao_backbuffer_texture);
+	zz_assert(NULL == ssao_backbuffer_surface);
+	zz_assert(NULL == ssao_backbuffer_texture2);
+	zz_assert(NULL == ssao_backbuffer_surface2);
+
+
+	HRESULT hr;
+
+	//------------------------------------------------------
+	// Create fullscene ssao  texture & surface
+	if (FAILED(hr = d3d_device->CreateTexture(
+		state.buffer_width,
+		state.buffer_height, 
+		1, // level
+		D3DUSAGE_RENDERTARGET,
+		D3DFMT_A32B32G32R32F, // blur texture should have 32-bit accuracy. if not, blurring could be unrecognizible.
+		D3DPOOL_DEFAULT, // rendertarget must set this to D3DPOOL_DEFAULT
+		&ssao_backbuffer_texture, NULL)))
+	{
+		ZZ_LOG("r_d3d: CreateTexture(ssao_backbuffer_texture[%d], %dx%d) failed.[%s]",
+			state.buffer_width, state.buffer_height, get_hresult_string(hr) );
+		zz_assert(0);
+		return false;
+	}
+
+	if (FAILED(hr = d3d_device->CreateTexture(
+		state.buffer_width,
+		state.buffer_height, 
+		1, // level
+		D3DUSAGE_RENDERTARGET,
+		D3DFMT_A32B32G32R32F, // blur texture should have 32-bit accuracy. if not, blurring could be unrecognizible.
+		D3DPOOL_DEFAULT, // rendertarget must set this to D3DPOOL_DEFAULT
+		&ssao_backbuffer_texture2, NULL)))
+	{
+		ZZ_LOG("r_d3d: CreateTexture(ssao_backbuffer_texture2[%d], %dx%d) failed.[%s]",
+			state.buffer_width, state.buffer_height, get_hresult_string(hr) );
+		zz_assert(0);
+		return false;
+	}
+
+
+	if (FAILED(hr = ssao_backbuffer_texture->GetSurfaceLevel(0, &ssao_backbuffer_surface))) {
+		ZZ_LOG("r_d3d: GetSurfaceLevel(ssao_backbuffer_texture) failed.[%s]", get_hresult_string(hr));
+		zz_assert(0);
+		return false;
+	}
+
+	if (FAILED(hr = ssao_backbuffer_texture2->GetSurfaceLevel(0, &ssao_backbuffer_surface2))) {
+		ZZ_LOG("r_d3d: GetSurfaceLevel(ssao_backbuffer_texture2) failed.[%s]", get_hresult_string(hr));
+		zz_assert(0);
+		return false;
+	}
+
+	D3DXCreateTextureFromFile( d3d_device, "3ddata/noise.png", &noise_tex );
+
+	return true;
+}
+
 bool zz_renderer_d3d::create_glow_textures ()
 {
 	//------------------------------------------------------
@@ -1116,7 +1226,8 @@ bool zz_renderer_d3d::restore_device_objects ()
 	}
 	//ZZ_LOG("%d-", progress++);
 
-	if (use_virtual_backbuffer) {
+	use_virtual_backbuffer = use_virtual_backbuffer || state.use_ssao;
+	if ( use_virtual_backbuffer) {
 		assert(NULL == v_backbuffer_texture);
 		if (FAILED(hr = d3d_device->CreateTexture(
 			state.buffer_width, 
@@ -1130,29 +1241,32 @@ bool zz_renderer_d3d::restore_device_objects ()
 			zz_assertf(0, "renderer_d3d: createtexture(v_backbuffer_texture, %dx%d) failed. [%s]", 
 				state.buffer_width, state.buffer_height,
 				get_hresult_string(hr));
-			return false;
-		}
 
-		assert(NULL == v_backbuffer_surface);
-		// Retrieve top-level surfaces of our shadow buffer (need these for use with SetRenderTarget)
-		if (FAILED(hr = v_backbuffer_texture->GetSurfaceLevel(0, &v_backbuffer_surface))) {
-			zz_assertf(0, "renderer_d3d: getsurfacelevel(v_backbuffer_surface) failed.[%s]", get_hresult_string(hr));
-			return false;
-		}
+			use_virtual_backbuffer = false;
+		} else {
 
-		assert(NULL == v_backbuffer_zsurface);
-		if (FAILED(hr = d3d_device->CreateDepthStencilSurface(
-			state.buffer_width,
-			state.buffer_height,
-			DEPTH_STENCIL_FORMAT,
-			D3DMULTISAMPLE_NONE , // multisample type
-			0, // MultisampleQuality
-			FALSE,
-			&v_backbuffer_zsurface,
-			NULL)))
-		{
-			zz_assertf(0, "renderer_d3d: createdepthstencilsurface(%dx%d) failed.[%s]", state.buffer_width, state.buffer_height, get_hresult_string(hr));
-			return false;
+			assert(NULL == v_backbuffer_surface);
+			// Retrieve top-level surfaces of our shadow buffer (need these for use with SetRenderTarget)
+			if (FAILED(hr = v_backbuffer_texture->GetSurfaceLevel(0, &v_backbuffer_surface))) {
+				zz_assertf(0, "renderer_d3d: getsurfacelevel(v_backbuffer_surface) failed.[%s]", get_hresult_string(hr));
+
+				use_virtual_backbuffer = false;
+			} else {
+				assert(NULL == v_backbuffer_zsurface);
+				if (FAILED(hr = d3d_device->CreateDepthStencilSurface(
+					state.buffer_width,
+					state.buffer_height,
+					DEPTH_STENCIL_FORMAT,
+					D3DMULTISAMPLE_NONE , // multisample type
+					0, // MultisampleQuality
+					FALSE,
+					&v_backbuffer_zsurface,
+					NULL)))
+				{
+					zz_assertf(0, "renderer_d3d: createdepthstencilsurface(%dx%d) failed.[%s]", state.buffer_width, state.buffer_height, get_hresult_string(hr));
+					use_virtual_backbuffer = false;
+				}
+			}
 		}
 	}
 	//ZZ_LOG("%d-", progress++);
@@ -1171,6 +1285,19 @@ bool zz_renderer_d3d::restore_device_objects ()
 		else if (!create_glow_textures()) {
 			state.use_glow = false;
 			state.use_glow_fullscene = false;
+		}
+	}
+	//ZZ_LOG("%d-", progress++);
+
+	if (state.use_ssao ) {
+		if( !use_virtual_backbuffer ) {
+			// Need VirtualBackbuffer for this to work!
+			state.use_ssao = false;
+		} else if (!check_ssaoable()) {
+			state.use_ssao = false;
+		}
+		else if (!create_ssao_textures()) {
+			state.use_ssao = false;
 		}
 	}
 	//ZZ_LOG("%d-", progress++);
@@ -1241,7 +1368,6 @@ bool zz_renderer_d3d::restore_device_objects ()
 
 	glow_viewport.Width  = state.buffer_width;
 	glow_viewport.Height = state.buffer_height;
-
 	glow_viewport.MinZ = 0.0f;
 	glow_viewport.MaxZ = 1.0f;
 	glow_viewport.X = 0;
@@ -1253,6 +1379,13 @@ bool zz_renderer_d3d::restore_device_objects ()
 	glow_downsample_viewport.MaxZ = 1.0f;
 	glow_downsample_viewport.X = 0;
 	glow_downsample_viewport.Y = 0;
+
+	ssao_viewport.Width  = state.buffer_width;
+	ssao_viewport.Height = state.buffer_height;
+	ssao_viewport.MinZ = 0.0f;
+	ssao_viewport.MaxZ = 1.0f;
+	ssao_viewport.X = 0;
+	ssao_viewport.Y = 0;
 
 	d3d_device->SetRenderState(D3DRS_LIGHTING, FALSE);
 	//ZZ_LOG("%d-", progress++);
@@ -1397,6 +1530,11 @@ bool zz_renderer_d3d::invalidate_device_objects ()
 	SAFE_RELEASE(v_backbuffer_surface);
 	SAFE_RELEASE(v_backbuffer_zsurface);
 	SAFE_RELEASE(v_backbuffer_texture);
+
+	SAFE_RELEASE(ssao_backbuffer_surface);
+	SAFE_RELEASE(ssao_backbuffer_texture);
+	SAFE_RELEASE(ssao_backbuffer_surface2);
+	SAFE_RELEASE(ssao_backbuffer_texture2);
 
 	SAFE_RELEASE(glow_backbuffer_surface);
 	SAFE_RELEASE(glow_backbuffer_texture);
@@ -1940,6 +2078,93 @@ void zz_renderer_d3d::pre_process ()
 {
 }
 
+void zz_renderer_d3d::draw_post_process( zz_shader * shader, int pass )
+{
+	TOVERLAY_VERTEX* dest_vertex;
+
+	if (!v_backbuffer_texture) return;
+	if( !ssao_backbuffer_texture ) return;
+	if (!overlay_vb) return;
+
+	float left = -0.5f;
+	float bottom = -0.5f;
+	float right = (float)state.screen_width - 0.5f;
+	float top = (float)state.screen_height - 0.5f;
+
+	if (FAILED(overlay_vb->Lock( 0, 0, (void**)&dest_vertex,
+		D3DLOCK_DISCARD ))) // NO D3DLOCK_NOOVERWRITE!
+		return;
+
+	dest_vertex[0].p = D3DXVECTOR4( left, top, 0.0f, 1.0f );
+	dest_vertex[0].tu = 0.0f;
+	dest_vertex[0].tv = 1.0f;
+
+	dest_vertex[1].p = D3DXVECTOR4( right, top, 0.0f, 1.0f );
+	dest_vertex[1].tu = 1.0f;
+	dest_vertex[1].tv = 1.0f;
+
+	dest_vertex[2].p = D3DXVECTOR4( left, bottom, 0.0f, 1.0f );
+	dest_vertex[2].tu = 0.0f;
+	dest_vertex[2].tv = 0.0f;
+
+	dest_vertex[3].p = D3DXVECTOR4( right, bottom, 0.0f, 1.0f );
+	dest_vertex[3].tu = 1.0f;
+	dest_vertex[3].tv = 0.0f;
+
+	if (FAILED(overlay_vb->Unlock())) return;
+
+	enable_fog(false);
+	enable_zbuffer(false);
+	enable_zwrite(false);
+	
+	d3d_device->SetTexture( 0, v_backbuffer_texture );
+	d3d_device->SetTexture( 1, ssao_backbuffer_texture );
+	d3d_device->SetTexture( 2, ssao_backbuffer_texture2 );
+	d3d_device->SetTexture( 3, noise_tex );
+	_cached.invalidate_texture( 0 );
+	_cached.invalidate_texture( 1 );
+	_cached.invalidate_texture( 2 );
+	_cached.invalidate_texture( 3 );
+
+	set_vertex_shader( shader->get_vshader() );
+	set_pixel_shader( shader->get_pshader() );
+
+	float vars[8] = {
+		1.38f,
+		0.07f,
+		18.0f,
+		0.000002f,
+		0.006f,
+		0.0f,
+		0.0f,
+		0.0f
+	};
+	set_pixel_shader_constant( 0, vars, 2 );
+
+	d3d_device->SetFVF(TOVERLAY_VERTEX_FVF);
+	d3d_device->SetStreamSource( 0, overlay_vb, 0, sizeof(TOVERLAY_VERTEX));
+
+	zz_renderer_cached_info& cached = znzin->renderer->get_cached_info();
+	cached.invalidate(zz_renderer_cached_info::VERTEX_BUFFER);
+
+	d3d_device->SetRenderState( D3DRS_CULLMODE, D3DCULL_NONE );
+
+	set_texture_stage_state( 0, ZZ_TSS_COLORARG1, ZZ_TA_TEXTURE );
+	set_texture_stage_state( 0, ZZ_TSS_COLOROP,   ZZ_TOP_SELECTARG1 );
+	set_texture_stage_state( 1, ZZ_TSS_COLOROP,   ZZ_TOP_DISABLE );
+	set_texture_stage_state( 0, ZZ_TSS_ALPHAOP,   ZZ_TOP_DISABLE );
+	enable_alpha_blend(false, ZZ_BT_NONE);
+
+	try {
+		if (FAILED(d3d_device->DrawPrimitive( D3DPT_TRIANGLESTRIP, 0, 2 )))
+			return;
+	}
+	catch (...) {
+		// do nothing. maybe device lost state.
+		ZZ_LOG("r_d3d: draw_post_process(). dp exception\n");
+	}
+}
+
 // post_process should be called in begin_scene/end_scene block
 void zz_renderer_d3d::post_process ()
 {
@@ -1963,13 +2188,24 @@ void zz_renderer_d3d::post_process ()
 			return;
 		}
 
-		clear_screen();
 		_begin_scene("virtual_backbuffer");
-		draw_texture(0.0f, (float)state.screen_width, 0.0f, (float)state.screen_height, v_backbuffer_texture, ZZ_BT_NONE);
+		clear_screen();
+
+		// Render post-processing effect ;D
+		if( !state.use_ssao || !zz_shader::post_process_shader ) {
+			draw_texture(-0.5f, (float)state.screen_width - 0.5f, -0.5f, (float)state.screen_height-0.5f, v_backbuffer_texture, ZZ_BT_NONE);
+		} else {
+			zz_shader* ppshader = zz_shader::post_process_shader;
+			zz_handle ppshader_v = ppshader->get_vshader( );
+			zz_handle ppshader_p = ppshader->get_pshader( );
+
+			draw_post_process( ppshader );
+		}
+
 		_end_scene("virtual_backbuffer");
 
 		// restart begin-end section
-		d3d_device->BeginScene();
+		//d3d_device->BeginScene();
 	}
 
 	// save min texture memory
@@ -1994,6 +2230,80 @@ void zz_renderer_d3d::post_process ()
 	}
 }
 
+void zz_renderer_d3d::begin_ssao ( )
+{
+	assert(!_scene_began);
+
+	if (ssao_backbuffer_surface && ssao_backbuffer_surface2) {
+		if (FAILED(d3d_device->SetRenderTarget(0, ssao_backbuffer_surface))) {
+			ZZ_LOG("r_d3d: begin_ssao: SetRenderTarget(1) failed\n");
+			return;
+		}
+		if (FAILED(d3d_device->SetRenderTarget(1, ssao_backbuffer_surface2))) {
+			ZZ_LOG("r_d3d: begin_ssao: SetRenderTarget(2) failed\n");
+			return;
+		}
+	}
+	else {
+		state.use_ssao = false;
+		ZZ_LOG("r_d3d: begin_ssao() failed. no ssao surface.\n");
+		zz_assert(0);
+		return;
+	}
+
+	// clear color except z-buffer and stencil.
+	d3d_device->Clear( 0L, NULL, D3DCLEAR_TARGET, 0x0, 1.0f, 0L );
+
+	//save old viewport
+	d3d_device->GetViewport(&old_viewport);
+
+	//set new, funky viewport
+	d3d_device->SetViewport(&ssao_viewport);
+
+	set_depthbias( 8 );
+	enable_zbuffer( true );
+	enable_zwrite( false ); // not to write to z-buffer
+	enable_zbuffer( false );
+}
+
+void zz_renderer_d3d::end_ssao ( )
+{
+	assert(!_scene_began);
+
+	zz_assert(state.use_ssao);
+
+	set_depthbias( 0 );
+
+	// restore viewport
+	d3d_device->SetViewport(&old_viewport);
+
+	// re-set render target
+	//set render target to normal back buffer / depth buffer
+	zz_assert(backbuffer_surface);
+	zz_assert(backbuffer_zsurface);
+
+	if( use_virtual_backbuffer ) {
+		if (FAILED(d3d_device->SetRenderTarget(0, v_backbuffer_surface))) {
+			ZZ_LOG("r_d3d: end_ssao::SetRenderTarget(1) failed\n");
+			return;
+		}
+	} else {
+		if (FAILED(d3d_device->SetRenderTarget(0, backbuffer_surface))) {
+			ZZ_LOG("r_d3d: end_ssao::SetRenderTarget(1) failed\n");
+			return;
+		}
+	}
+
+	if (FAILED(d3d_device->SetRenderTarget(1, 0))) {
+		ZZ_LOG("r_d3d: end_ssao::SetRenderTarget(2) failed\n");
+		return;
+	}         
+
+	// revert to original
+	enable_zbuffer( true );
+	enable_zwrite( true );
+	set_zfunc(ZZ_CMP_LESSEQUAL);
+}
 
 void zz_renderer_d3d::begin_glow (void)
 {
@@ -2069,14 +2379,18 @@ void zz_renderer_d3d::end_glow (void)
 	zz_assert(backbuffer_surface);
 	zz_assert(backbuffer_zsurface);
 
-	if (FAILED(d3d_device->SetRenderTarget(0, backbuffer_surface))) {
-		ZZ_LOG("r_d3d: end_glow::SetRenderTarget() failed\n");
-		return;
+	if( use_virtual_backbuffer ) {
+		if (FAILED(d3d_device->SetRenderTarget(0, v_backbuffer_surface))) {
+			ZZ_LOG("r_d3d: end_glow::SetRenderTarget() failed\n");
+			return;
+		}
+	} else {
+		if (FAILED(d3d_device->SetRenderTarget(0, backbuffer_surface))) {
+			ZZ_LOG("r_d3d: end_glow::SetRenderTarget() failed\n");
+			return;
+		}
 	}
 
-	if(znzin->screen_sfx.get_widescreen_mode())       
-		znzin->screen_sfx.post_clear_wide();            
-		
 	// revert to original
 	enable_zbuffer( true );
 	enable_zwrite( true );
@@ -2127,8 +2441,14 @@ void zz_renderer_d3d::overlay_glow (bool object_glow, bool fullscene_glow)
 void zz_renderer_d3d::draw_shadowmap_viewport (void)
 {
 	_begin_scene("draw_shadowmap_viewport");
-	draw_texture(4.5f, 4.5f+128.f, 4.5f, 4.5f + 128.f, shadowmap, ZZ_BT_NONE);
-	//draw_texture(4.5f, 4.5f+128.f, 4.5f, 4.5f + 128.f, shadowmap_forblur, ZZ_BT_NONE);
+
+	int x = 0;
+	
+	draw_texture(x*(128.0f+4.5f)+4.5f, x*(128.0f+4.5f)+4.5f+128.f, 4.5f, 4.5f + 128.f, shadowmap, ZZ_BT_NONE); x++;
+	draw_texture(x*(128.0f+4.5f)+4.5f, x*(128.0f+4.5f)+4.5f+128.f, 4.5f, 4.5f + 128.f, v_backbuffer_texture, ZZ_BT_NONE); x++;
+	draw_texture(x*(128.0f+4.5f)+4.5f, x*(128.0f+4.5f)+4.5f+128.f, 4.5f, 4.5f + 128.f, ssao_backbuffer_texture, ZZ_BT_NONE); x++;
+	draw_texture(x*(128.0f+4.5f)+4.5f, x*(128.0f+4.5f)+4.5f+128.f, 4.5f, 4.5f + 128.f, ssao_backbuffer_texture2, ZZ_BT_NONE); x++;
+
 	_end_scene("draw_shadowmap_viewport");
 }
 
@@ -2146,19 +2466,18 @@ void zz_renderer_d3d::draw_texture (float left, float right, float bottom, float
 		return;
 	
 	dest_vertex[0].p = D3DXVECTOR4( left, top, 0.0f, 1.0f );
-
 	dest_vertex[0].tu = 0.0f;
 	dest_vertex[0].tv = 1.0f;
-	dest_vertex[1].p = D3DXVECTOR4( right, top, 0.0f, 1.0f );
 
+	dest_vertex[1].p = D3DXVECTOR4( right, top, 0.0f, 1.0f );
 	dest_vertex[1].tu = 1.0f;
 	dest_vertex[1].tv = 1.0f;
-	dest_vertex[2].p = D3DXVECTOR4( left, bottom, 0.0f, 1.0f );
 
+	dest_vertex[2].p = D3DXVECTOR4( left, bottom, 0.0f, 1.0f );
 	dest_vertex[2].tu = 0.0f;
 	dest_vertex[2].tv = 0.0f;
-	dest_vertex[3].p = D3DXVECTOR4( right, bottom, 0.0f, 1.0f );
 
+	dest_vertex[3].p = D3DXVECTOR4( right, bottom, 0.0f, 1.0f );
 	dest_vertex[3].tu = 1.0f;
 	dest_vertex[3].tv = 0.0f;
 
@@ -2622,7 +2941,9 @@ void zz_renderer_d3d::set_light (zz_light * light)
 	//--------------------------------------------------------------------------------
 	// diffuse
 	set_vertex_shader_constant(ZZ_VSC_LIGHT_DIFFUSE, &light->diffuse.x, 1);
-
+	if( state.use_pixel_shader ) {
+		set_pixel_shader_constant(ZZ_VSC_LIGHT_DIFFUSE, &light->diffuse.x, 1);
+	}
 	// ambient
 	set_vertex_shader_constant(ZZ_VSC_LIGHT_AMBIENT, &light->ambient.x, 1);
 
@@ -2747,8 +3068,8 @@ bool zz_renderer_d3d::set_stream_buffer (zz_mesh * mesh)
 	static int num_index_buffer_call = 0;
 
 	if ((_cached.vertex_buffer)&&(last_vhandle == vhandle)) {
-	}
-	else {
+		// Do Nothing
+	} else {
 		LPDIRECT3DVERTEXBUFFER9 d3d_buffer = vertex_buffer_pool[vhandle];
 		if (FAILED(d3d_device->SetStreamSource(
 			0,          /* stream number */
@@ -2763,8 +3084,8 @@ bool zz_renderer_d3d::set_stream_buffer (zz_mesh * mesh)
 	}
 
 	if ((_cached.index_buffer)&&(last_ihandle == ihandle)) {
-	}
-	else {
+		// Do Nothing
+	} else {
 		if (FAILED(d3d_device->SetIndices(
 			index_buffer_pool[ihandle])))
 		{
@@ -2775,10 +3096,12 @@ bool zz_renderer_d3d::set_stream_buffer (zz_mesh * mesh)
 
 #ifdef ZZ_USECACHE
 	last_vhandle = vhandle;
+	//_cached.vertex_buffer = true;
 #endif
 
 #ifdef ZZ_USECACHE
 	last_ihandle = ihandle;
+	//_cached.index_buffer = true;
 #endif
 
 	return true;

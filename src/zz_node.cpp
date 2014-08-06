@@ -291,6 +291,15 @@ bool zz_node::set_name (const char * new_name)
 		node_system->name_hash_table.insert(new_name_to_set, this);
 	}
 
+	if( node_name.get() == NULL ) {
+#ifdef _DEBUG
+		assert( !"Failed to Set Node Name" );
+#endif
+		// Set the name to something unique, to at least avoid a crash
+		set_name( make_unique_key() );
+	}
+
+
 	return true;
 
 	//if (strlen(new_name) > strlen(node_name)) {

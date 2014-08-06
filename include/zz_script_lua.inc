@@ -6178,6 +6178,21 @@ int zz_lua_useGlow (lua_State * L)
 }
 
 //--------------------------------------------------------------------------------
+// useSSAO
+//--------------------------------------------------------------------------------
+int zz_lua_useSSAO (lua_State * L)
+{
+	int param_index = 1;
+	const char where[] = "useSSAO";
+	int return_num = 0;
+
+	int bUse = get_param_int( L, param_index, where );
+	useSSAO( bUse  );
+
+	return return_num;
+}
+
+//--------------------------------------------------------------------------------
 // useGravity
 //--------------------------------------------------------------------------------
 int zz_lua_useGravity (lua_State * L)
@@ -6821,6 +6836,7 @@ void register_api_interfaces (lua_State * L)
 	lua_register( L, "useFog", zz_lua_useFog );
 	lua_register( L, "useFullSceneGlow", zz_lua_useFullSceneGlow );
 	lua_register( L, "useGlow", zz_lua_useGlow );
+	lua_register( L, "useSSAO", zz_lua_useSSAO );
 	lua_register( L, "useGravity", zz_lua_useGravity );
 	lua_register( L, "useHardwareVertexProcessing", zz_lua_useHardwareVertexProcessing );
 	lua_register( L, "useLightmap", zz_lua_useLightmap );

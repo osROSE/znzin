@@ -97,6 +97,7 @@ zz_render_state::zz_render_state(void) :
 	adapter(-1),
 	refresh_rate(0),
 	max_simultaneous_textures(1),
+	use_ssao(false),
 	use_glow(false),
 	use_glow_ztest(false),
 	glowmap_size(128),
@@ -222,6 +223,26 @@ void zz_render_state::set_display_quality_level (int level)
 			znzin->terrain_blocks->set_num_reuse(500);
 			break;
 		case 1: // 최상급 품질(설정파일대로)
+			this->texture_loading_scale = 0;
+			this->texture_loading_format = 0;
+			this->use_shadowmap = true;
+			this->use_lightmap = true;
+			this->shadowmap_size = 256;
+			this->glowmap_size = 256;
+			this->mipmap_level = 3;
+			this->mipmap_filter = ZZ_TEXF_LINEAR;
+			this->min_filter = ZZ_TEXF_LINEAR;
+			this->mag_filter = ZZ_TEXF_LINEAR;
+			this->use_glow = true;
+			this->use_glow_fullscene = false;
+			this->use_zonly_terrain = true;
+			this->use_terrain_lod = false;
+			this->use_glow_ztest = false;
+			this->use_alpha_fog = true;
+			znzin->set_use_time_weight(1);
+			znzin->set_use_motion_interpolation(true);
+			znzin->terrain_blocks->set_num_reuse(500);
+			break;
 		case 0:
 			this->texture_loading_scale = initial_state.texture_loading_scale;
 			this->texture_loading_format = initial_state.texture_loading_format;
@@ -237,7 +258,7 @@ void zz_render_state::set_display_quality_level (int level)
 			this->use_glow_fullscene = initial_state.use_glow_fullscene;
 			this->use_zonly_terrain = initial_state.use_zonly_terrain;
 			this->use_terrain_lod = initial_state.use_terrain_lod;
-			this->use_glow_ztest = true; // zhotest
+			this->use_glow_ztest = initial_state.use_glow_ztest;
 			this->use_alpha_fog = initial_state.use_alpha_fog;
 			znzin->set_use_time_weight(1);
 			znzin->set_use_motion_interpolation(true);

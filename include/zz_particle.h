@@ -85,7 +85,7 @@ public:
 	zz_particle();
 	virtual ~zz_particle();
 
-	std::vector< zz_particle_event * >::iterator	m_CurEvent;
+	int							m_CurEvent;
 
 	float						m_fWeight;
 	  

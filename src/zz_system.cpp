@@ -62,7 +62,7 @@ zz_vfs_pkg_system * zz_system::pkg_system_worker_ = NULL;
 zz_vfs_thread *zz_system::vfs_thread = NULL;
 #endif // ZZ_IGNORE_TRIGGERVFS
 
-float zz_system::linear_gravity = -800.0f*ZZ_SCALE_IN / 1000; // -2 m / 1000 msec
+float zz_system::linear_gravity = -1800.0f*ZZ_SCALE_IN / 1000; // -2 m / 1000 msec
 
 zz_system::zz_system () : 
 		current_time(0),
@@ -134,9 +134,6 @@ zz_system::zz_system () :
 	shaders = (zz_manager *)ZZ_RUNTIME_TYPE(zz_manager)->create_instance();
 	shaders->set_name(".shaders");
 
-	channels = (zz_manager *)ZZ_RUNTIME_TYPE(zz_manager)->create_instance();
-	channels->set_name(".channels");
-
 	motions = (zz_manager *)ZZ_RUNTIME_TYPE(zz_manager)->create_instance();
 	motions->set_name(".motions");
 
@@ -169,7 +166,7 @@ zz_system::zz_system () :
 	//--------------------------------------------------------------------------------
 	// global variables setting
 	//--------------------------------------------------------------------------------
-    sfx_onoff = true;            //cho
+	sfx_onoff = true;            //cho
 
 	//ZZ_LOG("system: initialized ok.\n");
 }
@@ -228,7 +225,6 @@ zz_system::~zz_system ()
 	if (shaders) { shaders->release_children(); shaders = NULL; }
 	if (visibles) { visibles->release_children(); visibles = NULL; }
 	if (motions) { motions->release_children(); motions = NULL; } // motions must precedes channels
-	if (channels) { channels->release_children(); channels = NULL; }
 	if (skeletons) { skeletons->release_children(); skeletons = NULL; }
 	if (textures) { textures->release_children(); textures = NULL; }
 	if (terrain_blocks) { terrain_blocks->release_children(); terrain_blocks = NULL; }
@@ -281,10 +277,6 @@ zz_node * zz_system::find (const char * name_to_get, int categories)
 	//--------------------------------------------------------------------------------
 	if ((categories == ZZ_SC_ALL) || categories & ZZ_SC_CAMERA) {
 		found = this->cameras->find(name_to_get);
-		if (found) return found;
-	}
-	if ((categories == ZZ_SC_ALL) || categories & ZZ_SC_CHANNEL) {
-		found = this->channels->find(name_to_get);
 		if (found) return found;
 	}
 	if ((categories == ZZ_SC_ALL) || categories & ZZ_SC_LIGHT) {
@@ -497,52 +489,53 @@ bool zz_system::call_device_objects_func_ (zz_manager::zz_device_objects_func fu
 	//bool saved_state = state()->use_delayed_loading;
 	//state()->use_delayed_loading = false;
 
-	int progress = 0;
+	//int progress = 0;
 	//ZZ_LOG("%d0-", progress++);
 
+	zz_manager::zz_device_objects_callback callback( func );
 	// for shader
 	if (shaders)
-		shaders->for_each(zz_manager::zz_device_objects_callback(func));
+		shaders->for_each(callback);
 	//ZZ_LOG("%d1-", progress++);
 
 	// for mesh
 	if (meshes) 
-		meshes->for_each(zz_manager::zz_device_objects_callback(func));
+		meshes->for_each(callback);
 	//ZZ_LOG("%d2-", progress++);
 
 	// for terrain mesh
 	if (terrain_meshes)
-		terrain_meshes->for_each(zz_manager::zz_device_objects_callback(func));
+		terrain_meshes->for_each(callback);
 	//ZZ_LOG("%d3-", progress++);
 
 	// for rough terrain mesh
 	if (rough_terrain_meshes)
-		rough_terrain_meshes->for_each(zz_manager::zz_device_objects_callback(func));
+		rough_terrain_meshes->for_each(callback);
 	//ZZ_LOG("%d4-", progress++);
 
 	// for ocean mesh
 	if (ocean_meshes)
-		ocean_meshes->for_each(zz_manager::zz_device_objects_callback(func));
+		ocean_meshes->for_each(callback);
 	//ZZ_LOG("%d5-", progress++);
 
 	// for texture
 	if (textures)
-		textures->for_each(zz_manager::zz_device_objects_callback(func));
+		textures->for_each(callback);
 	//ZZ_LOG("%d6-", progress++);
 
 	// for visibles
 	if (visibles)
-		visibles->for_each(zz_manager::zz_device_objects_callback(func));
+		visibles->for_each(callback);
 	//ZZ_LOG("%d7-", progress++);
 
 	// for fonts
 	if (fonts)
-		fonts->for_each(zz_manager::zz_device_objects_callback(func));
+		fonts->for_each(callback);
 	//ZZ_LOG("%d8-", progress++);
 
 	// for cursors
 	if (cursors)
-		cursors->for_each(zz_manager::zz_device_objects_callback(func));
+		cursors->for_each(callback);
 	//ZZ_LOG("%d9-", progress++);
 
 	//ZZ_LOG("EnDp\n");
@@ -554,26 +547,26 @@ bool zz_system::invalidate_device_objects ()
 {
 	zz_manager_mesh_ishared::s_invalidate_device_objects();
 	//ZZ_LOG("system: INV-");
-	return call_device_objects_func_(zz_node::invalidate_device_objects);
+	return call_device_objects_func_(&zz_node::invalidate_device_objects);
 }
 
 bool zz_system::init_device_objects ()
 {
 	//ZZ_LOG("system: INI-");
-	return call_device_objects_func_(zz_node::init_device_objects);
+	return call_device_objects_func_(&zz_node::init_device_objects);
 }
 
 bool zz_system::delete_device_objects ()
 {
 	//ZZ_LOG("system: DEL-");
-	return call_device_objects_func_(zz_node::delete_device_objects);
+	return call_device_objects_func_(&zz_node::delete_device_objects);
 }
 
 bool zz_system::restore_device_objects ()
 {
 	zz_manager_mesh_ishared::s_restore_device_objects();
 	//ZZ_LOG("system: RES-");
-	return call_device_objects_func_(zz_node::restore_device_objects);
+	return call_device_objects_func_(&zz_node::restore_device_objects);
 }	
 
 int zz_system::manager_update (int time_to_update)

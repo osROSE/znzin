@@ -321,7 +321,7 @@ void zz_visible::render (bool recursive)
 
 void zz_visible::apply_lod (zz_mesh * mesh, zz_material * mat)
 {
-#if (1)
+#if (0)
 	zz_assert(mesh);
 	zz_assert(mat);
 
